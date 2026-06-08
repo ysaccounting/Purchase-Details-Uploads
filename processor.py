@@ -761,7 +761,7 @@ def load_file(file_bytes, filename=""):
         df = pd.read_csv(io.BytesIO(file_bytes))
     else:
         xl = pd.ExcelFile(io.BytesIO(file_bytes))
-        preferred = ["Template", "Sheet1", "Sheet"]
+        preferred = ["Source Data", "Input", "Template", "Sheet1", "Sheet"]
         sheet = next((s for s in preferred if s in xl.sheet_names), xl.sheet_names[0])
         df = xl.parse(sheet)
 
@@ -947,7 +947,7 @@ def build_filtered_outputs(df_raw, df_cancelled, all_df, summary_df, company_dfs
     # ── Build combined workbook ────────────────────────────────────────────────
     wb_combined = openpyxl.Workbook()
     wb_combined.remove(wb_combined.active)
-    write_sheet(wb_combined, "Input", df_raw)
+    write_sheet(wb_combined, "Source Data", df_raw)
     if len(df_cancelled) > 0:
         write_sheet(wb_combined, "Canceled", df_cancelled)
     write_sheet(wb_combined, "All", filtered_all)
@@ -994,7 +994,7 @@ def build_filtered_outputs(df_raw, df_cancelled, all_df, summary_df, company_dfs
         raw_companies = raw_company_map.get(sheet_name, [])
         company_input = df_raw[df_raw["Company"].isin(raw_companies)] if raw_companies else df_raw.iloc[0:0]
         if len(company_input) > 0:
-            write_sheet(wb, "Input", company_input)
+            write_sheet(wb, "Source Data", company_input)
         buf = io.BytesIO()
         wb.save(buf)
         company_files[sheet_name] = buf.getvalue()
