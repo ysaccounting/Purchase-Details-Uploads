@@ -963,6 +963,25 @@ def build_filtered_outputs(df_raw, df_cancelled, all_df, summary_df, company_dfs
     wb_combined.save(combined_buf)
     combined_bytes = combined_buf.getvalue()
 
+    # Map sheet name → raw Company values for Input tab filtering
+    raw_company_map = {
+        "Y&S":        ["YS Tickets", "YS-Seatgeek", "YS Tickets Spec", "YS-Seatgeek2"],
+        "Grossman":   ["YSM Tickets"],
+        "Sternbuch":  ["YSS Tickets"],
+        "Pollak":     ["Pollak Tickets"],
+        "Levine":     ["Yoni Levine"],
+        "Levovitz":   ["Levovitz"],
+        "GK":         ["GK LLC"],
+        "Ticket Guy": ["The Ticket Guy", "The Ticket Guy-Jas", "The Ticket Guy-Legacy", "The Ticket Guy VIP"],
+        "Chase":      ["Jacks YS"],
+        "YSA":        ["YSA", "YSA 2", "YSA 3"],
+        "Katz":       ["YS Katz"],
+        "TL":         ["YS TL"],
+        "Waxler":     ["YSW"],
+        "Damona":     ["Damon and Crew"],
+        "YourTickets":["YourTickets"],
+    }
+
     # ── Build per-company workbooks (non-empty selected only) ──────────────────
     company_files = {}
     for sheet_name, cdf in company_dfs.items():
@@ -971,6 +990,11 @@ def build_filtered_outputs(df_raw, df_cancelled, all_df, summary_df, company_dfs
         wb = openpyxl.Workbook()
         wb.remove(wb.active)
         write_sheet(wb, sheet_name, cdf)
+        # Add filtered Input tab as second tab
+        raw_companies = raw_company_map.get(sheet_name, [])
+        company_input = df_raw[df_raw["Company"].isin(raw_companies)] if raw_companies else df_raw.iloc[0:0]
+        if len(company_input) > 0:
+            write_sheet(wb, "Input", company_input)
         buf = io.BytesIO()
         wb.save(buf)
         company_files[sheet_name] = buf.getvalue()
