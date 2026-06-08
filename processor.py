@@ -761,7 +761,7 @@ def load_file(file_bytes, filename=""):
         df = pd.read_csv(io.BytesIO(file_bytes))
     else:
         xl = pd.ExcelFile(io.BytesIO(file_bytes))
-        preferred = ["Input", "Template", "Sheet1", "Sheet"]
+        preferred = ["Template", "Sheet1", "Sheet"]
         sheet = next((s for s in preferred if s in xl.sheet_names), xl.sheet_names[0])
         df = xl.parse(sheet)
 
