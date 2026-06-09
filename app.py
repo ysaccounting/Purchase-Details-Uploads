@@ -7,7 +7,7 @@ import uuid
 import tempfile
 import pickle
 from flask import Flask, request, jsonify, send_file, render_template
-from processor import process_files, build_filtered_outputs
+from processor import process_files, build_filtered_outputs, convert_new_format
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50MB
@@ -213,6 +213,32 @@ def download_all_zip(job_id):
     zip_buf.seek(0)
     return send_file(zip_buf, mimetype="application/zip", as_attachment=True,
                      download_name=f"Purchase Details - {dr}.zip")
+
+
+@app.route("/convert", methods=["POST"])
+def convert():
+    """Convert new-format file to old format and return as download."""
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+    f = request.files["file"]
+    file_bytes = f.read()
+    filename = f.filename
+    try:
+        converted_bytes = convert_new_format(file_bytes, filename)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Conversion failed: {str(e)}"}), 500
+
+    # Build output filename: replace extension, keep base name
+    base = os.path.splitext(filename)[0]
+    download_name = f"{base}_converted.xlsx"
+    return send_file(
+        io.BytesIO(converted_bytes),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        as_attachment=True,
+        download_name=download_name,
+    )
 
 
 if __name__ == "__main__":

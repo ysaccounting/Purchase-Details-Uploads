@@ -363,6 +363,33 @@
   <h1>Purchase Details Processor</h1>
   <p class="subtitle">Upload one or more TicketVault purchase details files to generate output files ready for QBO.</p>
 
+  <p class="zone-label">Zone 1 — New Format Converter</p>
+  <div id="convert-drop-zone">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+        d="M7.5 7.5h-.75A2.25 2.25 0 004.5 9.75v7.5a2.25 2.25 0 002.25 2.25h7.5a2.25 2.25 0 002.25-2.25v-7.5a2.25 2.25 0 00-2.25-2.25h-.75m-6 3.75l3 3m0 0l3-3m-3 3V1.5"/>
+    </svg>
+    <p>Drag & drop a <strong>new format</strong> file to convert, or <span id="convert-browse-link">browse</span></p>
+    <p class="file-hint">Converts new TicketVault export → old format ready for Zone 2</p>
+    <input type="file" id="convert-file-input" accept=".xlsx,.xlsm" />
+  </div>
+  <div id="convert-status">
+    <p class="status-text" id="convert-status-text">Converting…</p>
+  </div>
+  <div id="convert-result">
+    <a id="convert-download-link" href="#" download>
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+      </svg>
+      <span id="convert-download-label">Download converted file</span>
+    </a>
+    <button id="convert-again">Convert another file</button>
+  </div>
+
+  <div class="zone-divider">Zone 2 — QBO Processor</div>
+  <p class="zone-label">Zone 2 — Process &amp; Generate QBO Files</p>
+
   <div id="drop-zone">
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -714,6 +741,68 @@
       grid.appendChild(el);
     });
   }
+
+  // ── Zone 1: New Format Converter ─────────────────────────────────────────
+  const convertDropZone   = document.getElementById("convert-drop-zone");
+  const convertFileInput  = document.getElementById("convert-file-input");
+  const convertBrowseLink = document.getElementById("convert-browse-link");
+  const convertStatus     = document.getElementById("convert-status");
+  const convertStatusText = document.getElementById("convert-status-text");
+  const convertResult     = document.getElementById("convert-result");
+  const convertDownload   = document.getElementById("convert-download-link");
+  const convertLabel      = document.getElementById("convert-download-label");
+  const convertAgainBtn   = document.getElementById("convert-again");
+
+  convertBrowseLink.addEventListener("click", () => convertFileInput.click());
+  convertFileInput.addEventListener("change", () => {
+    if (convertFileInput.files[0]) handleConvert(convertFileInput.files[0]);
+  });
+  convertDropZone.addEventListener("dragover", e => { e.preventDefault(); convertDropZone.classList.add("drag-over"); });
+  convertDropZone.addEventListener("dragleave", () => convertDropZone.classList.remove("drag-over"));
+  convertDropZone.addEventListener("drop", e => {
+    e.preventDefault();
+    convertDropZone.classList.remove("drag-over");
+    if (e.dataTransfer.files[0]) handleConvert(e.dataTransfer.files[0]);
+  });
+  convertAgainBtn.addEventListener("click", () => {
+    convertResult.style.display = "none";
+    convertStatus.style.display = "none";
+    convertDropZone.style.display = "";
+    convertFileInput.value = "";
+  });
+
+  async function handleConvert(file) {
+    convertDropZone.style.display = "none";
+    convertResult.style.display = "none";
+    convertStatus.style.display = "block";
+    convertStatusText.textContent = "Converting…";
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/convert", { method: "POST", body: formData });
+      if (!res.ok) {
+        const err = await res.json();
+        convertStatusText.textContent = "Error: " + (err.error || "Conversion failed");
+        convertDropZone.style.display = "";
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const base = file.name.replace(/\.[^.]+$/, "");
+      const downloadName = base + "_converted.xlsx";
+      convertDownload.href = url;
+      convertDownload.download = downloadName;
+      convertLabel.textContent = downloadName;
+      convertStatus.style.display = "none";
+      convertResult.style.display = "block";
+    } catch(e) {
+      convertStatusText.textContent = "Error: " + e.message;
+      convertDropZone.style.display = "";
+    }
+  }
+
 </script>
 <div id="modal-overlay">
   <div id="modal-box">

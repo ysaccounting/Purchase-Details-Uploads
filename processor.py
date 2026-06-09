@@ -830,6 +830,111 @@ def process_file(file_bytes, filename=""):
     return process_files([(file_bytes, filename)])
 
 
+
+def convert_new_format(file_bytes, filename=""):
+    """
+    Convert a new-format TicketVault export to the old format layout.
+    Returns bytes of an Excel file (.xlsx) with the reformatted data.
+    """
+    df = pd.read_excel(io.BytesIO(file_bytes))
+
+    if not _is_new_format(df):
+        raise ValueError("File does not appear to be in the new TicketVault format.")
+
+    # Build Seats column from StartSeat-EndSeat
+    def make_seats(row):
+        try:
+            start = int(row["StartSeat"])
+            end = int(row["EndSeat"])
+            if start == end:
+                return str(start)
+            return f"{start} - {end}"
+        except:
+            return ""
+
+    df["Seats"] = df.apply(make_seats, axis=1)
+
+    # Total Cost = CostPerTicket × Quantity
+    df["Total Cost"] = pd.to_numeric(df["CostPerTicket"], errors="coerce").fillna(0) *                        pd.to_numeric(df["Quantity"], errors="coerce").fillna(0)
+
+    # Map columns to old format order
+    col_map = {
+        "CompanyName":      "Company",
+        "PurchaseOrderID":  "PO #",
+        "POCreatedDate":    "PO Created",
+        "Vendor":           "Vendor",
+        "PrimaryEventName": "Team/Performer",
+        "SecondaryEventName": "Opponent/Performer",
+        "EventDateTime":    "Event Date",
+        "VenueName":        "Venue",
+        "Section":          "Sec",
+        "Row":              "Row",
+        "Quantity":         "Qty",
+        "CostPerTicket":    "Cost",
+        "ExtPONumber":      "Ext PO #",
+        "AccountEmail":     "PO Email Account",
+        "IsPOCancelled":    "Cancelled",
+        "CreatedDate":      "Created",
+        "UpdatedBy":        "User",
+        "InternalNotes":    "Notes",
+    }
+
+    df = df.rename(columns=col_map)
+
+    # Final column order (old format minus Delivery Type, Tags; includes Seats and Total Cost)
+    final_cols = [
+        "Company", "PO #", "PO Created", "Vendor", "Team/Performer",
+        "Opponent/Performer", "Event Date", "Venue", "Sec", "Row", "Seats",
+        "Qty", "Cost", "Total Cost", "Ext PO #", "PO Email Account",
+        "Cancelled", "Created", "User", "Notes",
+    ]
+    # Keep only columns that exist
+    final_cols = [c for c in final_cols if c in df.columns]
+    df = df[final_cols]
+
+    # Write to Excel with styling
+    buf = io.BytesIO()
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Sheet1"
+
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    thin = Side(style="thin", color="CCCCCC")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    header_font = Font(name="Arial", bold=True, color="FFFFFF", size=10)
+    header_fill = PatternFill("solid", start_color="4472C4")
+
+    for ci, col in enumerate(final_cols, 1):
+        cell = ws.cell(row=1, column=ci, value=col)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.border = border
+
+    fill_odd  = PatternFill("solid", start_color="FFFFFF")
+    fill_even = PatternFill("solid", start_color="EEF2FF")
+
+    for ri, row in enumerate(df.itertuples(index=False), 2):
+        row_fill = fill_even if ri % 2 == 0 else fill_odd
+        for ci, val in enumerate(row, 1):
+            cell = ws.cell(row=ri, column=ci, value=val if val == val else None)
+            cell.font = Font(name="Arial", size=10)
+            cell.alignment = Alignment(vertical="center")
+            cell.border = border
+            cell.fill = row_fill
+
+    for ci, col in enumerate(final_cols, 1):
+        max_len = max(len(col), df.iloc[:, ci-1].astype(str).str.len().max() if len(df) > 0 else 0)
+        ws.column_dimensions[get_column_letter(ci)].width = min(max_len + 2, 45)
+
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = ws.dimensions
+
+    wb.save(buf)
+    return buf.getvalue()
+
+
 def process_files(file_list):
     """
     Takes a list of (file_bytes, filename) tuples.
