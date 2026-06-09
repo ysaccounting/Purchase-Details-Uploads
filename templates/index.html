@@ -345,6 +345,75 @@
     }
     #clear-btn:hover { background: #fad4d0; }
 
+    /* Zone 1 */
+    #convert-drop-zone {
+      border: 2px dashed #f0a500;
+      border-radius: 12px;
+      padding: 28px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      background: #fffdf5;
+      margin-bottom: 10px;
+    }
+    #convert-drop-zone.drag-over { border-color: #e69500; background: #fff8e1; }
+    #convert-drop-zone p { color: #555; font-size: 0.9rem; }
+    #convert-drop-zone span { color: #e69500; font-weight: 600; text-decoration: underline; cursor: pointer; }
+    #convert-status { margin-top: 12px; display: none; }
+    #convert-result {
+      margin-top: 12px;
+      display: none;
+      background: #f0faf4;
+      border: 1px solid #a5d6a7;
+      border-radius: 10px;
+      padding: 12px 16px;
+    }
+    #convert-result a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: #1D6F42;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    #convert-again {
+      display: block;
+      margin-top: 8px;
+      background: none;
+      border: none;
+      font-size: 0.8rem;
+      color: #999;
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 0;
+    }
+    #convert-again:hover { color: #555; }
+
+    /* Zone labels & divider */
+    .zone-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #999;
+      margin-bottom: 8px;
+    }
+    .zone-divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 20px 0 16px;
+      color: #ccc;
+      font-size: 12px;
+    }
+    .zone-divider::before, .zone-divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: #e0e0e0;
+    }
+
     /* Error */
     .error-box {
       background: #fdecea;
