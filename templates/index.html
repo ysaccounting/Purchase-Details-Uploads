@@ -407,6 +407,39 @@
     }
     #convert-again:hover { color: #555; }
 
+    /* Zone 1 file list */
+    #convert-file-list {
+      margin-top: 10px;
+      display: none;
+    }
+    #convert-file-list-header {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #e69500;
+      margin-bottom: 6px;
+    }
+    .convert-add-hint {
+      font-size: 0.78rem;
+      color: #999;
+      margin-top: 8px;
+      text-align: center;
+    }
+    #convert-process-btn {
+      display: none;
+      width: 100%;
+      margin-top: 12px;
+      padding: 12px;
+      background: #1D6F42;
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    #convert-process-btn:hover { background: #165a34; }
+
     /* Zone labels & divider */
     .zone-label {
       font-size: 0.75rem;
@@ -429,6 +462,62 @@
       flex: 1;
       height: 1px;
       background: #e0e0e0;
+    }
+
+    /* File list items with remove */
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 0.83rem;
+      color: #555;
+    }
+    .file-item:last-child { border-bottom: none; }
+    .file-item .file-name { flex: 1; }
+    .file-item .file-size { color: #999; font-size: 0.78rem; }
+    .file-item .file-remove {
+      background: none;
+      border: none;
+      color: #c0392b;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0 4px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .file-item .file-remove:hover { color: #e74c3c; }
+    #file-list {
+      margin-top: 12px;
+      display: none;
+    }
+    #file-list-header {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #3f51b5;
+      margin-bottom: 6px;
+    }
+    #process-btn {
+      display: none;
+      width: 100%;
+      margin-top: 12px;
+      padding: 12px;
+      background: #3f51b5;
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    #process-btn:hover { background: #303f9f; }
+    #add-more-hint {
+      font-size: 0.78rem;
+      color: #999;
+      margin-top: 8px;
+      text-align: center;
     }
 
     /* Error */
@@ -455,6 +544,12 @@
     <p class="file-hint">Accepts multiple files — downloads as zip if more than one</p>
   </div>
   <input type="file" id="convert-file-input" accept=".xlsx,.xlsm" style="display:none;" multiple />
+  <div id="convert-file-list">
+    <div id="convert-file-list-header"></div>
+    <div id="convert-file-list-items"></div>
+    <p class="convert-add-hint">Drop or browse more files above to add them to this list</p>
+  </div>
+  <button id="convert-process-btn">Convert Files</button>
   <div id="convert-status">
     <p class="status-text" id="convert-status-text">Converting…</p>
   </div>
@@ -478,7 +573,9 @@
   <div id="file-list">
     <div id="file-list-header"></div>
     <div id="file-list-items"></div>
+    <p id="add-more-hint">Drop or browse more files above to add them to this list</p>
   </div>
+  <button id="process-btn">Process Files</button>
   <div class="error-box" id="error-box"></div>
 
   <div id="status-area">
@@ -541,10 +638,14 @@
 
   let currentJobId = null;
   let pollTimer = null;
+  let selectedFiles = [];  // accumulated file list
+
+  const processBtn = document.getElementById("process-btn");
 
   browseLink.addEventListener("click", () => fileInput.click());
   fileInput.addEventListener("change", () => {
-    if (fileInput.files.length) handleFile(fileInput.files);
+    if (fileInput.files.length) addFiles(fileInput.files);
+    fileInput.value = "";  // reset so same file can be re-added if removed
   });
 
   dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("drag-over"); });
@@ -552,18 +653,64 @@
   dropZone.addEventListener("drop", e => {
     e.preventDefault();
     dropZone.classList.remove("drag-over");
-    const files = e.dataTransfer.files;
-    if (files.length) handleFile(files);
+    if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
   });
+
+  processBtn.addEventListener("click", () => {
+    if (selectedFiles.length) uploadFiles();
+  });
+
+  function addFiles(files) {
+    // Append new files, skipping exact duplicates (name + size)
+    Array.from(files).forEach(f => {
+      const dup = selectedFiles.some(x => x.name === f.name && x.size === f.size);
+      if (!dup) selectedFiles.push(f);
+    });
+    renderFileList();
+  }
+
+  function removeFile(idx) {
+    selectedFiles.splice(idx, 1);
+    renderFileList();
+  }
+
+  function renderFileList() {
+    const listEl = document.getElementById("file-list");
+    const header = document.getElementById("file-list-header");
+    const items  = document.getElementById("file-list-items");
+
+    if (selectedFiles.length === 0) {
+      listEl.style.display = "none";
+      processBtn.style.display = "none";
+      clearBtn.style.display = "none";
+      return;
+    }
+
+    header.textContent = `${selectedFiles.length} file${selectedFiles.length > 1 ? "s" : ""} selected`;
+    items.innerHTML = "";
+    selectedFiles.forEach((f, idx) => {
+      const size = f.size < 1024*1024 ? (f.size/1024).toFixed(1)+"KB" : (f.size/1024/1024).toFixed(1)+"MB";
+      const div = document.createElement("div");
+      div.className = "file-item";
+      div.innerHTML = `<span class="file-name">📄 ${f.name}</span><span class="file-size">${size}</span><button class="file-remove" title="Remove">✕</button>`;
+      div.querySelector(".file-remove").addEventListener("click", () => removeFile(idx));
+      items.appendChild(div);
+    });
+    listEl.style.display = "block";
+    processBtn.style.display = "block";
+    clearBtn.style.display = "block";
+  }
 
   function resetAll() {
     currentJobId = null;
     clearInterval(pollTimer);
+    selectedFiles = [];
     resultsArea.style.display = "none";
     statusArea.style.display = "none";
     errorBox.style.display = "none";
     resetBtn.style.display = "none";
     clearBtn.style.display = "none";
+    processBtn.style.display = "none";
     dropZone.style.display = "";
     document.getElementById("file-list").style.display = "none";
     fileInput.value = "";
@@ -582,36 +729,20 @@
     resetBtn.style.display = "block";
   }
 
-  function showFileList(files) {
-    const listEl = document.getElementById("file-list");
-    const header = document.getElementById("file-list-header");
-    const items  = document.getElementById("file-list-items");
-    header.textContent = `${files.length} file${files.length > 1 ? "s" : ""} selected`;
-    items.innerHTML = "";
-    Array.from(files).forEach(f => {
-      const size = f.size < 1024*1024 ? (f.size/1024).toFixed(1)+"KB" : (f.size/1024/1024).toFixed(1)+"MB";
-      const div = document.createElement("div");
-      div.className = "file-item";
-      div.innerHTML = `<span class="file-name">📄 ${f.name}</span><span class="file-size">${size}</span>`;
-      items.appendChild(div);
-    });
-    listEl.style.display = "block";
-  }
-
-  async function handleFile(files) {
-    if (!files || files.length === 0) return;
-    showFileList(files);
+  async function uploadFiles() {
+    if (selectedFiles.length === 0) return;
     dropZone.style.display = "none";
+    processBtn.style.display = "none";
     errorBox.style.display = "none";
     statusArea.style.display = "block";
     resultsArea.style.display = "none";
     resetBtn.style.display = "none";
     clearBtn.style.display = "block";
     progressBar.style.width = "15%";
-    statusText.textContent = files.length > 1 ? `Uploading ${files.length} files…` : "Uploading file…";
+    statusText.textContent = selectedFiles.length > 1 ? `Uploading ${selectedFiles.length} files…` : "Uploading file…";
 
     const formData = new FormData();
-    Array.from(files).forEach(f => formData.append("file", f));
+    selectedFiles.forEach(f => formData.append("file", f));
 
     let jobId;
     try {
@@ -819,19 +950,28 @@
   const convertLabel      = document.getElementById("convert-download-label");
   const convertAgainBtn   = document.getElementById("convert-again");
 
+  const convertProcessBtn = document.getElementById("convert-process-btn");
+  let convertFiles = [];  // accumulated files for Zone 1
+
   convertBrowseLink.addEventListener("click", (e) => { e.stopPropagation(); convertFileInput.click(); });
   convertDropZone.addEventListener("click", () => convertFileInput.click());
   convertFileInput.addEventListener("change", () => {
-    if (convertFileInput.files.length) handleConvert(convertFileInput.files);
+    if (convertFileInput.files.length) addConvertFiles(convertFileInput.files);
+    convertFileInput.value = "";
   });
   convertDropZone.addEventListener("dragover", e => { e.preventDefault(); convertDropZone.classList.add("drag-over"); });
   convertDropZone.addEventListener("dragleave", () => convertDropZone.classList.remove("drag-over"));
   convertDropZone.addEventListener("drop", e => {
     e.preventDefault();
     convertDropZone.classList.remove("drag-over");
-    if (e.dataTransfer.files.length) handleConvert(e.dataTransfer.files);
+    if (e.dataTransfer.files.length) addConvertFiles(e.dataTransfer.files);
+  });
+  convertProcessBtn.addEventListener("click", () => {
+    if (convertFiles.length) handleConvert(convertFiles);
   });
   convertAgainBtn.addEventListener("click", () => {
+    convertFiles = [];
+    renderConvertFileList();
     convertResult.style.display = "none";
     convertStatus.style.display = "none";
     convertDropZone.style.display = "";
@@ -839,15 +979,57 @@
   });
 
   document.getElementById("convert-clear-btn").addEventListener("click", () => {
+    convertFiles = [];
+    renderConvertFileList();
     convertResult.style.display = "none";
     convertStatus.style.display = "none";
     convertDropZone.style.display = "";
     convertFileInput.value = "";
   });
 
+  function addConvertFiles(files) {
+    Array.from(files).forEach(f => {
+      const dup = convertFiles.some(x => x.name === f.name && x.size === f.size);
+      if (!dup) convertFiles.push(f);
+    });
+    renderConvertFileList();
+  }
+
+  function removeConvertFile(idx) {
+    convertFiles.splice(idx, 1);
+    renderConvertFileList();
+  }
+
+  function renderConvertFileList() {
+    const listEl = document.getElementById("convert-file-list");
+    const header = document.getElementById("convert-file-list-header");
+    const items  = document.getElementById("convert-file-list-items");
+
+    if (convertFiles.length === 0) {
+      listEl.style.display = "none";
+      convertProcessBtn.style.display = "none";
+      return;
+    }
+
+    header.textContent = `${convertFiles.length} file${convertFiles.length > 1 ? "s" : ""} selected`;
+    items.innerHTML = "";
+    convertFiles.forEach((f, idx) => {
+      const size = f.size < 1024*1024 ? (f.size/1024).toFixed(1)+"KB" : (f.size/1024/1024).toFixed(1)+"MB";
+      const div = document.createElement("div");
+      div.className = "file-item";
+      div.innerHTML = `<span class="file-name">📄 ${f.name}</span><span class="file-size">${size}</span><button class="file-remove" title="Remove">✕</button>`;
+      div.querySelector(".file-remove").addEventListener("click", () => removeConvertFile(idx));
+      items.appendChild(div);
+    });
+    listEl.style.display = "block";
+    convertProcessBtn.style.display = "block";
+  }
+
   async function handleConvert(files) {
     const fileArr = Array.from(files);
     convertDropZone.style.display = "none";
+    document.getElementById("convert-file-list").style.display = "none";
+    convertProcessBtn.style.display = "none";
     convertResult.style.display = "none";
     convertStatus.style.display = "block";
     convertStatusText.textContent = fileArr.length > 1 ? `Converting ${fileArr.length} files…` : "Converting…";
@@ -888,6 +1070,7 @@
       }
       convertStatus.style.display = "none";
       convertResult.style.display = "block";
+      convertFiles = [];  // clear accumulated files now that conversion is done
     } catch(e) {
       convertStatusText.textContent = "Error: " + e.message;
       convertDropZone.style.display = "";
