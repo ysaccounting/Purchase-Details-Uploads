@@ -555,7 +555,7 @@
   </div>
   <div id="convert-result">
     <a id="convert-download-btn" href="#" download>
-      ⬇ <span id="convert-download-label">Download converted file</span>
+      <span id="convert-download-label">Download File</span>
     </a>
     <button id="convert-clear-btn">✕ Clear</button>
     <button id="convert-again">Convert another file</button>
@@ -621,7 +621,7 @@
   </div>
 
   <button id="reset-btn" style="display:none;">Process another file</button>
-  <button id="clear-btn">✕ Clear All &amp; Start Over</button>
+  <button id="clear-btn">Clear</button>
 </div>
 
 <script>
@@ -1051,7 +1051,7 @@
         const downloadName = base + "_converted.xlsx";
         convertDownload.href = url;
         convertDownload.download = downloadName;
-        convertLabel.textContent = downloadName;
+        convertLabel.textContent = "Download File";
       } else {
         const formData = new FormData();
         fileArr.forEach(f => formData.append("file", f));
@@ -1066,7 +1066,7 @@
         const url = URL.createObjectURL(blob);
         convertDownload.href = url;
         convertDownload.download = "converted_files.zip";
-        convertLabel.textContent = `converted_files.zip (${fileArr.length} files)`;
+        convertLabel.textContent = "Download ZIP folder";
       }
       convertStatus.style.display = "none";
       convertResult.style.display = "block";
