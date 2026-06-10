@@ -560,6 +560,11 @@ def build_all_query(df_raw):
         return row["Venue"]
     df["Vendor"] = df.apply(resolve_tm_am, axis=1)
 
+    # Concert Extras at Madison Square Garden → Madison Square Garden (before Live Nation Extras rename)
+    msg_venues = ["Madison Square Garden", "Madison Square Garden Parking Lots"]
+    msg_mask = (df["Vendor"] == "Concert Extras") & (df["Venue"].isin(msg_venues))
+    df.loc[msg_mask, "Vendor"] = "Madison Square Garden"
+
     df = apply_vendor_replacements(df)
 
     for old, new in [("Toyota Amphitheatre", "Live Nation Toyota Amp"),
@@ -674,6 +679,11 @@ def build_summary_query(df_raw):
             return row["Team/Performer"]
         return row["Venue"]
     s["Vendor"] = s.apply(resolve_tm_am_s, axis=1)
+
+    # Concert Extras at Madison Square Garden → Madison Square Garden (before Live Nation Extras rename)
+    msg_venues_s = ["Madison Square Garden", "Madison Square Garden Parking Lots"]
+    msg_mask_s = (s["Vendor"] == "Concert Extras") & (s["Venue"].isin(msg_venues_s))
+    s.loc[msg_mask_s, "Vendor"] = "Madison Square Garden"
 
     s = apply_vendor_replacements(s)
     s["Vendor"] = s["Vendor"].str.replace("FrontGate Tickets", "Front Gate Tickets", regex=False)
