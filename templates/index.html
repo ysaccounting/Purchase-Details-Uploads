@@ -363,23 +363,40 @@
     #convert-result {
       margin-top: 12px;
       display: none;
-      background: #f0faf4;
-      border: 1px solid #a5d6a7;
-      border-radius: 10px;
-      padding: 12px 16px;
     }
-    #convert-result a {
+    #convert-download-btn {
       display: flex;
       align-items: center;
-      gap: 10px;
-      text-decoration: none;
-      color: #1D6F42;
+      justify-content: center;
+      width: 100%;
+      padding: 11px;
+      background: #1D6F42;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
       font-size: 0.9rem;
-      font-weight: 500;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      margin-bottom: 8px;
     }
+    #convert-download-btn:hover { background: #165a34; }
+    #convert-clear-btn {
+      display: block;
+      width: 100%;
+      padding: 9px;
+      background: #fdecea;
+      border: 1px solid #f5c6cb;
+      border-radius: 10px;
+      color: #c0392b;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 8px;
+    }
+    #convert-clear-btn:hover { background: #fad4d0; }
     #convert-again {
       display: block;
-      margin-top: 8px;
       background: none;
       border: none;
       font-size: 0.8rem;
@@ -435,16 +452,17 @@
   <p class="zone-label">Zone 1 — New Format Converter</p>
   <div id="convert-drop-zone">
     <p>Drag & drop a <strong>new format</strong> file to convert, or <span id="convert-browse-link">browse</span></p>
-    <p class="file-hint">Converts new TicketVault export → old format ready for Zone 2</p>
+    <p class="file-hint">Accepts multiple files — downloads as zip if more than one</p>
   </div>
-  <input type="file" id="convert-file-input" accept=".xlsx,.xlsm" style="display:none;" />
+  <input type="file" id="convert-file-input" accept=".xlsx,.xlsm" style="display:none;" multiple />
   <div id="convert-status">
     <p class="status-text" id="convert-status-text">Converting…</p>
   </div>
   <div id="convert-result">
-    <a id="convert-download-link" href="#" download>
-      <span id="convert-download-label">Download converted file</span>
+    <a id="convert-download-btn" href="#" download>
+      ⬇ <span id="convert-download-label">Download converted file</span>
     </a>
+    <button id="convert-clear-btn">✕ Clear</button>
     <button id="convert-again">Convert another file</button>
   </div>
 
@@ -806,20 +824,20 @@
   const convertStatus     = document.getElementById("convert-status");
   const convertStatusText = document.getElementById("convert-status-text");
   const convertResult     = document.getElementById("convert-result");
-  const convertDownload   = document.getElementById("convert-download-link");
+  const convertDownload   = document.getElementById("convert-download-btn");
   const convertLabel      = document.getElementById("convert-download-label");
   const convertAgainBtn   = document.getElementById("convert-again");
 
   convertBrowseLink.addEventListener("click", () => convertFileInput.click());
   convertFileInput.addEventListener("change", () => {
-    if (convertFileInput.files[0]) handleConvert(convertFileInput.files[0]);
+    if (convertFileInput.files.length) handleConvert(convertFileInput.files);
   });
   convertDropZone.addEventListener("dragover", e => { e.preventDefault(); convertDropZone.classList.add("drag-over"); });
   convertDropZone.addEventListener("dragleave", () => convertDropZone.classList.remove("drag-over"));
   convertDropZone.addEventListener("drop", e => {
     e.preventDefault();
     convertDropZone.classList.remove("drag-over");
-    if (e.dataTransfer.files[0]) handleConvert(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files.length) handleConvert(e.dataTransfer.files);
   });
   convertAgainBtn.addEventListener("click", () => {
     convertResult.style.display = "none";
@@ -828,30 +846,56 @@
     convertFileInput.value = "";
   });
 
-  async function handleConvert(file) {
+  document.getElementById("convert-clear-btn").addEventListener("click", () => {
+    convertResult.style.display = "none";
+    convertStatus.style.display = "none";
+    convertDropZone.style.display = "";
+    convertFileInput.value = "";
+  });
+
+  async function handleConvert(files) {
+    const fileArr = Array.from(files);
     convertDropZone.style.display = "none";
     convertResult.style.display = "none";
     convertStatus.style.display = "block";
-    convertStatusText.textContent = "Converting…";
-
-    const formData = new FormData();
-    formData.append("file", file);
+    convertStatusText.textContent = fileArr.length > 1 ? `Converting ${fileArr.length} files…` : "Converting…";
 
     try {
-      const res = await fetch("/convert", { method: "POST", body: formData });
-      if (!res.ok) {
-        const err = await res.json();
-        convertStatusText.textContent = "Error: " + (err.error || "Conversion failed");
-        convertDropZone.style.display = "";
-        return;
+      if (fileArr.length === 1) {
+        // Single file — download directly
+        const formData = new FormData();
+        formData.append("file", fileArr[0]);
+        const res = await fetch("/convert", { method: "POST", body: formData });
+        if (!res.ok) {
+          const err = await res.json();
+          convertStatusText.textContent = "Error: " + (err.error || "Conversion failed");
+          convertDropZone.style.display = "";
+          return;
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const base = fileArr[0].name.replace(/\.[^.]+$/, "");
+        const downloadName = base + "_converted.xlsx";
+        convertDownload.href = url;
+        convertDownload.download = downloadName;
+        convertLabel.textContent = downloadName;
+      } else {
+        // Multiple files — download as zip
+        const formData = new FormData();
+        fileArr.forEach(f => formData.append("file", f));
+        const res = await fetch("/convert_zip", { method: "POST", body: formData });
+        if (!res.ok) {
+          const err = await res.json();
+          convertStatusText.textContent = "Error: " + (err.error || "Conversion failed");
+          convertDropZone.style.display = "";
+          return;
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        convertDownload.href = url;
+        convertDownload.download = "converted_files.zip";
+        convertLabel.textContent = `converted_files.zip (${fileArr.length} files)`;
       }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const base = file.name.replace(/\.[^.]+$/, "");
-      const downloadName = base + "_converted.xlsx";
-      convertDownload.href = url;
-      convertDownload.download = downloadName;
-      convertLabel.textContent = downloadName;
       convertStatus.style.display = "none";
       convertResult.style.display = "block";
     } catch(e) {

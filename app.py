@@ -241,6 +241,30 @@ def convert():
     )
 
 
+@app.route("/convert_zip", methods=["POST"])
+def convert_zip():
+    """Convert multiple new-format files and return as a zip."""
+    files = request.files.getlist("file")
+    if not files or all(f.filename == "" for f in files):
+        return jsonify({"error": "No files provided"}), 400
+
+    zip_buf = io.BytesIO()
+    with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for f in files:
+            if not f.filename:
+                continue
+            try:
+                converted = convert_new_format(f.read(), f.filename)
+                base = os.path.splitext(f.filename)[0]
+                zf.writestr(f"{base}_converted.xlsx", converted)
+            except Exception as e:
+                return jsonify({"error": f"Failed on {f.filename}: {str(e)}"}), 500
+
+    zip_buf.seek(0)
+    return send_file(zip_buf, mimetype="application/zip", as_attachment=True,
+                     download_name="converted_files.zip")
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
