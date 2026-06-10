@@ -451,7 +451,7 @@
 
   <p class="zone-label">Zone 1 (Optional) — Upload the Slack data puller version to receive back the traditional TicketVault Purchase Details screen version.</p>
   <div id="convert-drop-zone">
-    <p>Drag & drop your <strong>Excel or CSV</strong> files here, or <span id="browse-link">browse</span></p>
+    <p>Drag & drop your <strong>Excel or CSV</strong> files here, or <span id="convert-browse-link">browse</span></p>
     <p class="file-hint">Accepts multiple files — downloads as zip if more than one</p>
   </div>
   <input type="file" id="convert-file-input" accept=".xlsx,.xlsm" style="display:none;" multiple />
@@ -684,7 +684,6 @@
     const sa = document.getElementById("modal-select-all");
     sa.checked = false;
     sa.indeterminate = false;
-    // Re-wire select-all each time modal opens so it picks up the fresh list
     sa.onchange = function() {
       document.querySelectorAll("#modal-company-list input[type=checkbox]").forEach(cb => {
         cb.checked = this.checked;
@@ -704,8 +703,6 @@
     sa.indeterminate = checked > 0 && checked < total;
     document.getElementById("modal-generate-btn").disabled = checked === 0;
   }
-
-  // select-all wired inside showModal
 
   function closeModal() {
     document.getElementById("modal-overlay").classList.remove("active");
@@ -750,21 +747,18 @@
     document.getElementById("date-badge").textContent = data.date_range;
     document.getElementById("btn-zip").href = `/download/${jobId}/all`;
 
-    // Populate stats table
     const statsBody = document.getElementById("stats-body");
     statsBody.innerHTML = "";
     const stats = data.stats || {};
     const allCompanies = data.selected_companies || data.all_companies || [];
     const availableCompanies = data.available_companies || data.companies || [];
 
-    // Combined row first
     if (stats["Combined"]) {
       const tr = document.createElement("tr");
       tr.className = "combined-row";
       tr.innerHTML = `<td>Combined</td><td>${stats["Combined"].rows.toLocaleString()}</td><td>$${stats["Combined"].total_cost.toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2})}</td>`;
       statsBody.appendChild(tr);
     }
-    // All company rows — no opacity difference
     allCompanies.forEach(company => {
       const s = stats[company] || {rows: 0, total_cost: 0};
       const tr = document.createElement("tr");
@@ -772,11 +766,9 @@
       statsBody.appendChild(tr);
     });
 
-    // Build company grid — Combined first, then all companies
     const grid = document.getElementById("company-grid");
     grid.innerHTML = "";
 
-    // Combined button
     const combinedBtn = document.createElement("a");
     combinedBtn.className = "download-btn";
     combinedBtn.href = `/download/${jobId}/combined`;
@@ -791,7 +783,6 @@
       <span class="btn-label"><strong>Combined</strong></span>`;
     grid.appendChild(combinedBtn);
 
-    // Company buttons — all shown, no opacity difference
     const companiesWithData = new Set(availableCompanies);
     allCompanies.forEach(company => {
       const hasData = companiesWithData.has(company);
@@ -828,7 +819,8 @@
   const convertLabel      = document.getElementById("convert-download-label");
   const convertAgainBtn   = document.getElementById("convert-again");
 
-  convertBrowseLink.addEventListener("click", () => convertFileInput.click());
+  convertBrowseLink.addEventListener("click", (e) => { e.stopPropagation(); convertFileInput.click(); });
+  convertDropZone.addEventListener("click", () => convertFileInput.click());
   convertFileInput.addEventListener("change", () => {
     if (convertFileInput.files.length) handleConvert(convertFileInput.files);
   });
@@ -862,7 +854,6 @@
 
     try {
       if (fileArr.length === 1) {
-        // Single file — download directly
         const formData = new FormData();
         formData.append("file", fileArr[0]);
         const res = await fetch("/convert", { method: "POST", body: formData });
@@ -880,7 +871,6 @@
         convertDownload.download = downloadName;
         convertLabel.textContent = downloadName;
       } else {
-        // Multiple files — download as zip
         const formData = new FormData();
         fileArr.forEach(f => formData.append("file", f));
         const res = await fetch("/convert_zip", { method: "POST", body: formData });
