@@ -449,9 +449,9 @@
   <h1>Purchase Details Processor</h1>
   <p class="subtitle">Upload one or more TicketVault purchase details files to generate output files ready for QBO.</p>
 
-  <p class="zone-label">Zone 1 — New Format Converter</p>
+  <p class="zone-label">Zone 1 (Optional) — Upload the Slack data puller version here to receive back the traditional TicketVault Purchase Details screen version.</p>
   <div id="convert-drop-zone">
-    <p>Drag & drop a <strong>new format</strong> file to convert, or <span id="convert-browse-link">browse</span></p>
+    <p>Drag & drop your <strong>Excel or CSV</strong> files here, or <span id="browse-link">browse</span></p>
     <p class="file-hint">Accepts multiple files — downloads as zip if more than one</p>
   </div>
   <input type="file" id="convert-file-input" accept=".xlsx,.xlsm" style="display:none;" multiple />
@@ -466,7 +466,7 @@
     <button id="convert-again">Convert another file</button>
   </div>
 
-  <div class="zone-divider">Zone 2 — QBO Processor</div>
+  <div class="zone-divider">Zone 2 (Required) — Upload either the Slack data puller version or the traditional version received back from Zone 1 above.</div>
   <p class="zone-label">Zone 2 — Process &amp; Generate QBO Files</p>
 
   <div id="drop-zone">
