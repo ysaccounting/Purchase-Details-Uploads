@@ -538,31 +538,34 @@
   <h1>Purchase Details Processor</h1>
   <p class="subtitle">Upload one or more TicketVault purchase details files to generate output files ready for QBO.</p>
 
-  <p class="zone-label">Zone 1 (Optional) — Upload the Slack data puller version to receive back the traditional TicketVault Purchase Details screen version.</p>
-  <div id="convert-drop-zone">
-    <p>Drag & drop your <strong>Excel or CSV</strong> files here, or <span id="convert-browse-link">browse</span></p>
-    <p class="file-hint">Accepts multiple files — downloads as zip if more than one</p>
-  </div>
-  <input type="file" id="convert-file-input" accept=".xlsx,.xlsm" style="display:none;" multiple />
-  <div id="convert-file-list">
-    <div id="convert-file-list-header"></div>
-    <div id="convert-file-list-items"></div>
-    <p class="convert-add-hint">Drop or browse more files above to add them to this list</p>
-  </div>
-  <button id="convert-process-btn">Convert Files</button>
-  <div id="convert-status">
-    <p class="status-text" id="convert-status-text">Converting…</p>
-  </div>
-  <div id="convert-result">
-    <a id="convert-download-btn" href="#" download>
-      <span id="convert-download-label">Download File</span>
-    </a>
-    <button id="convert-clear-btn">✕ Clear</button>
-    <button id="convert-again">Convert another file</button>
+  <div id="zone1-block">
+    <p class="zone-label">Zone 1 (Optional) — Upload the Slack data puller version to receive back the traditional TicketVault Purchase Details screen version.</p>
+    <div id="convert-drop-zone">
+      <p>Drag & drop your <strong>Excel or CSV</strong> files here, or <span id="convert-browse-link">browse</span></p>
+      <p class="file-hint">Accepts multiple files — downloads as zip if more than one</p>
+    </div>
+    <input type="file" id="convert-file-input" accept=".xlsx,.xlsm" style="display:none;" multiple />
+    <div id="convert-file-list">
+      <div id="convert-file-list-header"></div>
+      <div id="convert-file-list-items"></div>
+      <p class="convert-add-hint">Drop or browse more files above to add them to this list</p>
+    </div>
+    <button id="convert-process-btn">Convert Files</button>
+    <div id="convert-status">
+      <p class="status-text" id="convert-status-text">Converting…</p>
+    </div>
+    <div id="convert-result">
+      <a id="convert-download-btn" href="#" download>
+        <span id="convert-download-label">Download File</span>
+      </a>
+      <button id="convert-clear-btn">✕ Clear</button>
+      <button id="convert-again">Convert another file</button>
+    </div>
+
+    <div class="zone-divider"></div>
   </div>
 
-  <div class="zone-divider"></div>
-  <p class="zone-label">Zone 2 (Required) — Upload either the Slack data puller version or the traditional version received back from Zone 1 above.</p>
+  <p class="zone-label" id="zone2-label">Zone 2 (Required) — Upload either the Slack data puller version or the traditional version received back from Zone 1 above.</p>
 
   <div id="drop-zone">
     <p>Drag & drop your <strong>Excel or CSV</strong> files here, or <span id="browse-link">browse</span></p>
@@ -705,6 +708,8 @@
     currentJobId = null;
     clearInterval(pollTimer);
     selectedFiles = [];
+    document.getElementById("zone1-block").style.display = "";
+    document.getElementById("zone2-label").style.display = "";
     resultsArea.style.display = "none";
     statusArea.style.display = "none";
     errorBox.style.display = "none";
@@ -731,6 +736,8 @@
 
   async function uploadFiles() {
     if (selectedFiles.length === 0) return;
+    document.getElementById("zone1-block").style.display = "none";
+    document.getElementById("zone2-label").style.display = "none";
     dropZone.style.display = "none";
     processBtn.style.display = "none";
     errorBox.style.display = "none";
