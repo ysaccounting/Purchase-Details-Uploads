@@ -709,6 +709,10 @@ def filter_company(all_df, companies, rename_company=None, vendor_replace=None, 
             f["Vendor"] = f["Vendor"].str.replace(old, new, regex=False)
     if strip_company_prefix:
         f["Company"] = f["Company"].str.replace(strip_company_prefix, "", regex=False)
+    # Sort by PO Created > Vendor > Team/Performer > Total Cost
+    sort_cols = [c for c in ["PO Created", "Vendor", "Team/Performer", "Total Cost"] if c in f.columns]
+    if sort_cols:
+        f = f.sort_values(sort_cols, kind="mergesort").reset_index(drop=True)
     return f
 
 
@@ -901,6 +905,21 @@ def convert_new_format(file_bytes, filename=""):
     # Keep only columns that exist
     final_cols = [c for c in final_cols if c in df.columns]
     df = df[final_cols]
+
+    # Strip time portion from date columns — keep date only (MM/DD/YYYY)
+    def date_only(v):
+        if pd.isna(v):
+            return v
+        s = str(v).strip()
+        if "T" in s:
+            s = s.split("T")[0]
+        try:
+            return pd.Timestamp(s).strftime("%m/%d/%Y")
+        except Exception:
+            return v
+    for date_col in ["PO Created", "Event Date", "Created"]:
+        if date_col in df.columns:
+            df[date_col] = df[date_col].apply(date_only)
 
     # Write to Excel with styling
     buf = io.BytesIO()
