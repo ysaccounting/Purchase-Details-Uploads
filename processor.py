@@ -709,10 +709,17 @@ def filter_company(all_df, companies, rename_company=None, vendor_replace=None, 
             f["Vendor"] = f["Vendor"].str.replace(old, new, regex=False)
     if strip_company_prefix:
         f["Company"] = f["Company"].str.replace(strip_company_prefix, "", regex=False)
-    # Sort by PO Created > Vendor > Team/Performer > Total Cost
-    sort_cols = [c for c in ["PO Created", "Vendor", "Team/Performer", "Total Cost"] if c in f.columns]
+    # Sort by PO Created > Vendor > Team/Performer (base name, ignoring email) > Total Cost
+    sort_cols = [c for c in ["PO Created", "Vendor"] if c in f.columns]
+    if "Team/Performer" in f.columns:
+        # Extract base name (portion before first " / ") for sorting, ignoring email/order#
+        f["_tp_sort"] = f["Team/Performer"].astype(str).str.split(" / ").str[0]
+        sort_cols.append("_tp_sort")
+    if "Total Cost" in f.columns:
+        sort_cols.append("Total Cost")
     if sort_cols:
         f = f.sort_values(sort_cols, kind="mergesort").reset_index(drop=True)
+    f = f.drop(columns=["_tp_sort"], errors="ignore")
     return f
 
 
