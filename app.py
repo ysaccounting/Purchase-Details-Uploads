@@ -111,9 +111,53 @@ def status(job_id):
     })
 
 
+def run_configure(job_id, selected_companies):
+    """Background worker that builds filtered output files."""
+    try:
+        d = job_dir(job_id)
+        meta = read_meta(job_id)
+
+        pkl_path = os.path.join(d, "dataframes.pkl")
+        with open(pkl_path, "rb") as f:
+            dfs = pickle.load(f)
+
+        combined_bytes, company_files = build_filtered_outputs(
+            dfs["df_raw"], dfs["df_cancelled"], dfs["all_df"],
+            dfs["summary_df"], dfs["company_dfs"], selected_companies
+        )
+
+        # Write combined
+        with open(os.path.join(d, "combined.xlsx"), "wb") as f:
+            f.write(combined_bytes)
+
+        # Write company files
+        companies_dir = os.path.join(d, "companies")
+        os.makedirs(companies_dir, exist_ok=True)
+        for fn in os.listdir(companies_dir):
+            os.remove(os.path.join(companies_dir, fn))
+        for company, file_bytes in company_files.items():
+            safe = company.replace("/", "_").replace("\\", "_")
+            with open(os.path.join(companies_dir, f"{safe}.xlsx"), "wb") as f:
+                f.write(file_bytes)
+
+        # Update meta with selection
+        meta["selected_companies"] = selected_companies
+        meta["available_companies"] = list(company_files.keys())
+        with open(os.path.join(d, "meta.json"), "w") as f:
+            json.dump(meta, f)
+
+        with open(os.path.join(d, "configure_status.json"), "w") as f:
+            json.dump({"status": "ready"}, f)
+
+    except Exception:
+        import traceback
+        with open(os.path.join(job_dir(job_id), "configure_status.json"), "w") as f:
+            json.dump({"status": "error", "message": traceback.format_exc()}, f)
+
+
 @app.route("/configure/<job_id>", methods=["POST"])
 def configure(job_id):
-    """Accept selected companies, build filtered output files, save to disk."""
+    """Kick off async building of filtered output files."""
     meta = read_meta(job_id)
     if not meta:
         return jsonify({"error": "Job not found"}), 404
@@ -121,47 +165,36 @@ def configure(job_id):
     data = request.get_json()
     selected_companies = data.get("selected_companies", meta["all_companies"])
 
-    # Load pickled DataFrames
     pkl_path = os.path.join(job_dir(job_id), "dataframes.pkl")
     if not os.path.exists(pkl_path):
         return jsonify({"error": "Data not found"}), 404
-    with open(pkl_path, "rb") as f:
-        dfs = pickle.load(f)
 
-    combined_bytes, company_files = build_filtered_outputs(
-        dfs["df_raw"], dfs["df_cancelled"], dfs["all_df"],
-        dfs["summary_df"], dfs["company_dfs"], selected_companies
-    )
-
+    # Mark as building and start background thread
     d = job_dir(job_id)
+    with open(os.path.join(d, "configure_status.json"), "w") as f:
+        json.dump({"status": "building"}, f)
+    threading.Thread(target=run_configure, args=(job_id, selected_companies), daemon=True).start()
 
-    # Write combined
-    with open(os.path.join(d, "combined.xlsx"), "wb") as f:
-        f.write(combined_bytes)
+    return jsonify({"status": "building"})
 
-    # Write company files
-    companies_dir = os.path.join(d, "companies")
-    os.makedirs(companies_dir, exist_ok=True)
-    # Clear old company files
-    for fn in os.listdir(companies_dir):
-        os.remove(os.path.join(companies_dir, fn))
-    for company, file_bytes in company_files.items():
-        safe = company.replace("/", "_").replace("\\", "_")
-        with open(os.path.join(companies_dir, f"{safe}.xlsx"), "wb") as f:
-            f.write(file_bytes)
 
-    # Update meta with selection
-    meta["selected_companies"] = selected_companies
-    meta["available_companies"] = list(company_files.keys())
-    with open(os.path.join(d, "meta.json"), "w") as f:
-        json.dump(meta, f)
-
-    return jsonify({
-        "status": "ready",
-        "date_range":           meta["date_range"],
-        "available_companies":  meta["available_companies"],
-        "selected_companies":   selected_companies,
-    })
+@app.route("/configure_status/<job_id>")
+def configure_status(job_id):
+    """Poll for completion of file generation."""
+    path = os.path.join(job_dir(job_id), "configure_status.json")
+    if not os.path.exists(path):
+        return jsonify({"status": "not_found"}), 404
+    with open(path) as f:
+        status = json.load(f)
+    if status.get("status") == "ready":
+        meta = read_meta(job_id)
+        return jsonify({
+            "status": "ready",
+            "date_range":          meta["date_range"],
+            "available_companies": meta.get("available_companies", []),
+            "selected_companies":  meta.get("selected_companies", []),
+        })
+    return jsonify(status)
 
 
 @app.route("/download/<job_id>/combined")

@@ -862,20 +862,49 @@
         body: JSON.stringify({ selected_companies: selected }),
       });
       const result = await res.json();
-      if (result.status !== "ready") {
-        showError("Error generating files: " + (result.message || "Unknown error"));
+      if (result.status !== "building") {
+        showError("Error generating files: " + (result.message || result.error || "Unknown error"));
         closeModal();
         return;
       }
-      closeModal();
-      showResults(_jobId, { ..._data, available_companies: result.available_companies, selected_companies: result.selected_companies });
+      // Poll for completion
+      pollConfigure(_jobId);
     } catch(e) {
       showError("Failed to generate files. Please try again.");
       closeModal();
-    } finally {
       btn.disabled = false;
       btn.textContent = "Generate files";
     }
+  }
+
+  function pollConfigure(jobId) {
+    const timer = setInterval(async () => {
+      try {
+        const res = await fetch(`/configure_status/${jobId}`);
+        const result = await res.json();
+        if (result.status === "building") return;
+        clearInterval(timer);
+
+        const btn = document.getElementById("modal-generate-btn");
+        btn.disabled = false;
+        btn.textContent = "Generate files";
+
+        if (result.status === "ready") {
+          closeModal();
+          showResults(jobId, { ..._data, available_companies: result.available_companies, selected_companies: result.selected_companies });
+        } else {
+          showError("Error generating files: " + (result.message || "Unknown error"));
+          closeModal();
+        }
+      } catch(e) {
+        clearInterval(timer);
+        const btn = document.getElementById("modal-generate-btn");
+        btn.disabled = false;
+        btn.textContent = "Generate files";
+        showError("Lost connection while generating. Please try again.");
+        closeModal();
+      }
+    }, 1500);
   }
 
   function showResults(jobId, data) {
