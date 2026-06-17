@@ -854,6 +854,9 @@
     const btn = document.getElementById("modal-generate-btn");
     btn.disabled = true;
     btn.textContent = "Generating…";
+    document.getElementById("modal-progress").style.display = "block";
+    document.getElementById("modal-progress-bar").style.width = "0%";
+    document.getElementById("modal-progress-text").textContent = "Starting…";
 
     try {
       const res = await fetch(`/configure/${_jobId}`, {
@@ -882,12 +885,20 @@
       try {
         const res = await fetch(`/configure_status/${jobId}`);
         const result = await res.json();
-        if (result.status === "building") return;
+        if (result.status === "building") {
+          if (result.total) {
+            const pct = Math.round((result.done / result.total) * 100);
+            document.getElementById("modal-progress-bar").style.width = pct + "%";
+            document.getElementById("modal-progress-text").textContent = `Generating files… ${result.done} of ${result.total}`;
+          }
+          return;
+        }
         clearInterval(timer);
 
         const btn = document.getElementById("modal-generate-btn");
         btn.disabled = false;
         btn.textContent = "Generate files";
+        document.getElementById("modal-progress").style.display = "none";
 
         if (result.status === "ready") {
           closeModal();
@@ -901,10 +912,11 @@
         const btn = document.getElementById("modal-generate-btn");
         btn.disabled = false;
         btn.textContent = "Generate files";
+        document.getElementById("modal-progress").style.display = "none";
         showError("Lost connection while generating. Please try again.");
         closeModal();
       }
-    }, 1500);
+    }, 1000);
   }
 
   function showResults(jobId, data) {
@@ -1132,6 +1144,12 @@
     <div class="modal-actions">
       <button onclick="closeModal()" style="padding:9px 18px; font-size:13px; border-radius:10px; cursor:pointer;">Cancel</button>
       <button id="modal-generate-btn" onclick="generateFiles()">Generate files</button>
+    </div>
+    <div id="modal-progress" style="display:none; margin-top:16px;">
+      <div style="background:#e8eaf6; border-radius:99px; height:8px; overflow:hidden; margin-bottom:6px;">
+        <div id="modal-progress-bar" style="height:100%; background:#1D6F42; border-radius:99px; width:0%; transition:width 0.3s ease;"></div>
+      </div>
+      <p id="modal-progress-text" style="font-size:12px; color:#666; text-align:center;">Generating…</p>
     </div>
   </div>
 </div>

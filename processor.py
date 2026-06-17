@@ -1066,14 +1066,22 @@ def process_files(file_list):
     }
 
 
-def build_filtered_outputs(df_raw, df_cancelled, all_df, summary_df, company_dfs, selected_companies):
-    """Build combined workbook and per-company files for the selected companies only."""
+def build_filtered_outputs(df_raw, df_cancelled, all_df, summary_df, company_dfs, selected_companies, progress_cb=None):
+    """Build combined workbook and per-company files for the selected companies only.
+    progress_cb(done, total) is called as work completes."""
     selected_set = set(selected_companies)
 
-    # Filter All and Summary to selected companies
-    filtered_all = all_df[all_df["Company"].isin(
-        [co for co_name, cdf in company_dfs.items() if co_name in selected_set for co in cdf["Company"].unique()]
-    )].copy() if len(all_df) > 0 else all_df
+    # Total steps = 1 (combined workbook) + number of non-empty selected companies
+    selected_nonempty = [n for n, cdf in company_dfs.items() if n in selected_set and len(cdf) > 0]
+    total_steps = 1 + len(selected_nonempty)
+    done_steps = 0
+    def _tick():
+        nonlocal done_steps
+        done_steps += 1
+        if progress_cb:
+            progress_cb(done_steps, total_steps)
+    if progress_cb:
+        progress_cb(0, total_steps)
 
     # Simpler: filter all_df by checking if rows belong to selected company sheets
     # Build a set of raw company values that map to selected sheet names
@@ -1103,6 +1111,7 @@ def build_filtered_outputs(df_raw, df_cancelled, all_df, summary_df, company_dfs
     combined_buf = io.BytesIO()
     wb_combined.save(combined_buf)
     combined_bytes = combined_buf.getvalue()
+    _tick()  # combined done
 
     # Map sheet name → raw Company values for Input tab filtering
     raw_company_map = {
@@ -1139,5 +1148,6 @@ def build_filtered_outputs(df_raw, df_cancelled, all_df, summary_df, company_dfs
         buf = io.BytesIO()
         wb.save(buf)
         company_files[sheet_name] = buf.getvalue()
+        _tick()  # this company done
 
     return combined_bytes, company_files

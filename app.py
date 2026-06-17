@@ -121,9 +121,14 @@ def run_configure(job_id, selected_companies):
         with open(pkl_path, "rb") as f:
             dfs = pickle.load(f)
 
+        def progress_cb(done, total):
+            with open(os.path.join(d, "configure_status.json"), "w") as f:
+                json.dump({"status": "building", "done": done, "total": total}, f)
+
         combined_bytes, company_files = build_filtered_outputs(
             dfs["df_raw"], dfs["df_cancelled"], dfs["all_df"],
-            dfs["summary_df"], dfs["company_dfs"], selected_companies
+            dfs["summary_df"], dfs["company_dfs"], selected_companies,
+            progress_cb=progress_cb
         )
 
         # Write combined
