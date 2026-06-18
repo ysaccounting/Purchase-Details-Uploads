@@ -1085,9 +1085,35 @@ def build_filtered_outputs(df_raw, df_cancelled, all_df, summary_df, company_dfs
 
     # Simpler: filter all_df by checking if rows belong to selected company sheets
     # Build a set of raw company values that map to selected sheet names
+    # Map sheet name → raw Company values (true source names, before any renaming)
+    raw_company_map = {
+        "Y&S":        ["YS Tickets", "YS-Seatgeek", "YS Tickets Spec", "YS-Seatgeek2"],
+        "Grossman":   ["YSM Tickets"],
+        "Sternbuch":  ["YSS Tickets"],
+        "Pollak":     ["Pollak Tickets"],
+        "Levine":     ["Yoni Levine"],
+        "Levovitz":   ["Levovitz"],
+        "GK":         ["GK LLC"],
+        "Ticket Guy": ["The Ticket Guy", "The Ticket Guy-Jas", "The Ticket Guy-Legacy", "The Ticket Guy VIP"],
+        "Chase":      ["Jacks YS"],
+        "Asher":      ["YSA", "YSA 2", "YSA 3"],
+        "Katz":       ["YS Katz"],
+        "TL":         ["YS TL"],
+        "Waxler":     ["YSW"],
+        "Damona":     ["Damon and Crew"],
+        "YourTickets":["YourTickets"],
+    }
+
+    # Build the set of raw Company values for the selected sheets.
+    # Use raw_company_map (true source names) so renamed companies (e.g. Ticket Guy)
+    # still match rows in the All/Summary tabs, which carry the raw names.
     selected_raw_companies = set()
-    for sheet_name, cdf in company_dfs.items():
-        if sheet_name in selected_set and len(cdf) > 0:
+    for sheet_name in selected_set:
+        if sheet_name in raw_company_map:
+            selected_raw_companies.update(raw_company_map[sheet_name])
+        # Also include any raw values present in the company df (covers unmapped names)
+        cdf = company_dfs.get(sheet_name)
+        if cdf is not None and len(cdf) > 0:
             selected_raw_companies.update(cdf["Company"].unique())
 
     filtered_all = all_df[all_df["Company"].isin(selected_raw_companies)].copy()
@@ -1112,25 +1138,6 @@ def build_filtered_outputs(df_raw, df_cancelled, all_df, summary_df, company_dfs
     wb_combined.save(combined_buf)
     combined_bytes = combined_buf.getvalue()
     _tick()  # combined done
-
-    # Map sheet name → raw Company values for Input tab filtering
-    raw_company_map = {
-        "Y&S":        ["YS Tickets", "YS-Seatgeek", "YS Tickets Spec", "YS-Seatgeek2"],
-        "Grossman":   ["YSM Tickets"],
-        "Sternbuch":  ["YSS Tickets"],
-        "Pollak":     ["Pollak Tickets"],
-        "Levine":     ["Yoni Levine"],
-        "Levovitz":   ["Levovitz"],
-        "GK":         ["GK LLC"],
-        "Ticket Guy": ["The Ticket Guy", "The Ticket Guy-Jas", "The Ticket Guy-Legacy", "The Ticket Guy VIP"],
-        "Chase":      ["Jacks YS"],
-        "Asher":      ["YSA", "YSA 2", "YSA 3"],
-        "Katz":       ["YS Katz"],
-        "TL":         ["YS TL"],
-        "Waxler":     ["YSW"],
-        "Damona":     ["Damon and Crew"],
-        "YourTickets":["YourTickets"],
-    }
 
     # ── Build per-company workbooks (non-empty selected only) ──────────────────
     company_files = {}
