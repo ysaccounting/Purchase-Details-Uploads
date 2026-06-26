@@ -560,10 +560,11 @@ def build_all_query(df_raw):
         return row["Venue"]
     df["Vendor"] = df.apply(resolve_tm_am, axis=1)
 
-    # Concert Extras at Madison Square Garden → Madison Square Garden (before Live Nation Extras rename)
-    msg_venues = ["Madison Square Garden", "Madison Square Garden Parking Lots"]
-    msg_mask = (df["Vendor"] == "Concert Extras") & (df["Venue"].isin(msg_venues))
-    df.loc[msg_mask, "Vendor"] = "Madison Square Garden"
+    # Concert Extras at MSG / Radio City / Beacon → Madison Square Garden (before Live Nation Extras rename)
+    ce_msg_venues = ["Madison Square Garden", "Madison Square Garden Parking Lots",
+                     "Radio City Music Hall", "Beacon Theatre - New York"]
+    ce_mask = (df["Vendor"] == "Concert Extras") & (df["Venue"].isin(ce_msg_venues))
+    df.loc[ce_mask, "Vendor"] = "Madison Square Garden"
 
     df = apply_vendor_replacements(df)
 
@@ -680,10 +681,11 @@ def build_summary_query(df_raw):
         return row["Venue"]
     s["Vendor"] = s.apply(resolve_tm_am_s, axis=1)
 
-    # Concert Extras at Madison Square Garden → Madison Square Garden (before Live Nation Extras rename)
-    msg_venues_s = ["Madison Square Garden", "Madison Square Garden Parking Lots"]
-    msg_mask_s = (s["Vendor"] == "Concert Extras") & (s["Venue"].isin(msg_venues_s))
-    s.loc[msg_mask_s, "Vendor"] = "Madison Square Garden"
+    # Concert Extras at MSG / Radio City / Beacon → Madison Square Garden (before Live Nation Extras rename)
+    ce_msg_venues_s = ["Madison Square Garden", "Madison Square Garden Parking Lots",
+                       "Radio City Music Hall", "Beacon Theatre - New York"]
+    ce_mask_s = (s["Vendor"] == "Concert Extras") & (s["Venue"].isin(ce_msg_venues_s))
+    s.loc[ce_mask_s, "Vendor"] = "Madison Square Garden"
 
     s = apply_vendor_replacements(s)
     s["Vendor"] = s["Vendor"].str.replace("FrontGate Tickets", "Front Gate Tickets", regex=False)
