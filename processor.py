@@ -439,7 +439,179 @@ MLB_TEAMS = {
     "Washington Wizards",
     "Winnipeg Jets"
 }
-MAJOR_LEAGUE_TEAMS = MLB_TEAMS  # alias
+TEAM_LEAGUE = {
+    'Anaheim Ducks': 'NHL',
+    'Arizona Cardinals': 'NFL',
+    'Arizona Diamondbacks': 'MLB',
+    'Athletics': 'MLB',
+    'Atlanta Braves': 'MLB',
+    'Atlanta Dream': 'WNBA',
+    'Atlanta Falcons': 'NFL',
+    'Atlanta Hawks': 'NBA',
+    'Atlanta United FC': 'MLS',
+    'Austin FC': 'MLS',
+    'Baltimore Orioles': 'MLB',
+    'Baltimore Ravens': 'NFL',
+    'Boston Bruins': 'NHL',
+    'Boston Celtics': 'NBA',
+    'Boston Red Sox': 'MLB',
+    'Brooklyn Nets': 'NBA',
+    'Buffalo Bills': 'NFL',
+    'Buffalo Sabres': 'NHL',
+    'CF Montreal': 'MLS',
+    'Calgary Flames': 'NHL',
+    'Calgary Stampeders': 'CFL',
+    'Carolina Hurricanes': 'NHL',
+    'Carolina Panthers': 'NFL',
+    'Charlotte FC': 'MLS',
+    'Charlotte Hornets': 'NBA',
+    'Chicago Bears': 'NFL',
+    'Chicago Blackhawks': 'NHL',
+    'Chicago Bulls': 'NBA',
+    'Chicago Cubs': 'MLB',
+    'Chicago Fire': 'MLS',
+    'Chicago Sky': 'WNBA',
+    'Chicago White Sox': 'MLB',
+    'Cincinnati Bengals': 'NFL',
+    'Cincinnati Reds': 'MLB',
+    'Cleveland Browns': 'NFL',
+    'Cleveland Cavaliers': 'NBA',
+    'Cleveland Guardians': 'MLB',
+    'Colorado Avalanche': 'NHL',
+    'Colorado Rapids': 'MLS',
+    'Colorado Rockies': 'MLB',
+    'Columbus Blue Jackets': 'NHL',
+    'Columbus Crew': 'MLS',
+    'Connecticut Sun': 'WNBA',
+    'DC United': 'MLS',
+    'Dallas Cowboys': 'NFL',
+    'Dallas Mavericks': 'NBA',
+    'Dallas Stars': 'NHL',
+    'Dallas Wings': 'WNBA',
+    'Denver Broncos': 'NFL',
+    'Denver Nuggets': 'NBA',
+    'Detroit Lions': 'NFL',
+    'Detroit Pistons': 'NBA',
+    'Detroit Red Wings': 'NHL',
+    'Detroit Tigers': 'MLB',
+    'Edmonton Oilers': 'NHL',
+    'FC Cincinnati': 'MLS',
+    'FC Dallas': 'MLS',
+    'Florida Panthers': 'NHL',
+    'Golden State Valkyries': 'WNBA',
+    'Golden State Warriors': 'NBA',
+    'Green Bay Packers': 'NFL',
+    'Houston Astros': 'MLB',
+    'Houston Dynamo': 'MLS',
+    'Houston Rockets': 'NBA',
+    'Houston Texans': 'NFL',
+    'Indiana Fever': 'WNBA',
+    'Indiana Pacers': 'NBA',
+    'Indianapolis Colts': 'NFL',
+    'Inter Miami CF': 'MLS',
+    'Jacksonville Jaguars': 'NFL',
+    'Kansas City Chiefs': 'NFL',
+    'Kansas City Royals': 'MLB',
+    'LA Clippers': 'NBA',
+    'Las Vegas Aces': 'WNBA',
+    'Las Vegas Raiders': 'NFL',
+    'Los Angeles Angels': 'MLB',
+    'Los Angeles Chargers': 'NFL',
+    'Los Angeles Dodgers': 'MLB',
+    'Los Angeles FC': 'MLS',
+    'Los Angeles Galaxy': 'MLS',
+    'Los Angeles Kings': 'NHL',
+    'Los Angeles Lakers': 'NBA',
+    'Los Angeles Rams': 'NFL',
+    'Los Angeles Sparks': 'WNBA',
+    'Memphis Grizzlies': 'NBA',
+    'Miami Dolphins': 'NFL',
+    'Miami Heat': 'NBA',
+    'Miami Marlins': 'MLB',
+    'Milwaukee Brewers': 'MLB',
+    'Milwaukee Bucks': 'NBA',
+    'Minnesota Lynx': 'WNBA',
+    'Minnesota Timberwolves': 'NBA',
+    'Minnesota Twins': 'MLB',
+    'Minnesota United FC': 'MLS',
+    'Minnesota Vikings': 'NFL',
+    'Minnesota Wild': 'NHL',
+    'Montreal Canadiens': 'NHL',
+    'Nashville Predators': 'NHL',
+    'Nashville SC': 'MLS',
+    'New England Patriots': 'NFL',
+    'New England Revolution': 'MLS',
+    'New Jersey Devils': 'NHL',
+    'New Orleans Pelicans': 'NBA',
+    'New Orleans Saints': 'NFL',
+    'New York City FC': 'MLS',
+    'New York Giants': 'NFL',
+    'New York Islanders': 'NHL',
+    'New York Jets': 'NFL',
+    'New York Knicks': 'NBA',
+    'New York Liberty': 'WNBA',
+    'New York Mets': 'MLB',
+    'New York Rangers': 'NHL',
+    'New York Red Bulls': 'MLS',
+    'New York Yankees': 'MLB',
+    'Oklahoma City Thunder': 'NBA',
+    'Orlando City SC': 'MLS',
+    'Orlando Magic': 'NBA',
+    'Ottawa Senators': 'NHL',
+    'Philadelphia 76ers': 'NBA',
+    'Philadelphia Eagles': 'NFL',
+    'Philadelphia Flyers': 'NHL',
+    'Philadelphia Phillies': 'MLB',
+    'Philadelphia Union': 'MLS',
+    'Phoenix Mercury': 'WNBA',
+    'Phoenix Suns': 'NBA',
+    'Pittsburgh Penguins': 'NHL',
+    'Pittsburgh Pirates': 'MLB',
+    'Pittsburgh Steelers': 'NFL',
+    'Portland Timbers': 'MLS',
+    'Portland Trail Blazers': 'NBA',
+    'Real Salt Lake': 'MLS',
+    'Sacramento Kings': 'NBA',
+    'Saint Louis City SC': 'MLS',
+    'San Antonio Spurs': 'NBA',
+    'San Diego FC': 'MLS',
+    'San Diego Padres': 'MLB',
+    'San Francisco 49ers': 'NFL',
+    'San Francisco Giants': 'MLB',
+    'San Jose Earthquakes': 'MLS',
+    'San Jose Sharks': 'NHL',
+    'Seattle Kraken': 'NHL',
+    'Seattle Mariners': 'MLB',
+    'Seattle Seahawks': 'NFL',
+    'Seattle Sounders': 'MLS',
+    'Seattle Storm': 'WNBA',
+    'Sporting Kansas City': 'MLS',
+    'St. Louis Blues': 'NHL',
+    'St. Louis Cardinals': 'MLB',
+    'Tampa Bay Buccaneers': 'NFL',
+    'Tampa Bay Lightning': 'NHL',
+    'Tampa Bay Rays': 'MLB',
+    'Tennessee Titans': 'NFL',
+    'Texas Rangers': 'MLB',
+    'Toronto Blue Jays': 'MLB',
+    'Toronto FC': 'MLS',
+    'Toronto Maple Leafs': 'NHL',
+    'Toronto Raptors': 'NBA',
+    'Utah Jazz': 'NBA',
+    'Utah Mammoth': 'NHL',
+    'Vancouver Canucks': 'NHL',
+    'Vancouver Whitecaps FC': 'MLS',
+    'Vegas Golden Knights': 'NHL',
+    'Washington Capitals': 'NHL',
+    'Washington Commanders': 'NFL',
+    'Washington Mystics': 'WNBA',
+    'Washington Nationals': 'MLB',
+    'Washington Wizards': 'NBA',
+    'Winnipeg Jets': 'NHL',
+}
+
+# Derive the team set from the league mapping (kept in sync)
+MAJOR_LEAGUE_TEAMS = set(TEAM_LEAGUE.keys())
 
 # Company → (sheet name, list of Company values in data)
 COMPANY_SHEETS = {
@@ -522,9 +694,74 @@ def apply_vendor_replacements(df):
     return df
 
 
+COLLEGE_KEYWORDS = ["college", "university", "football", "basketball", "hockey", "baseball"]
+
+
+def league_for_team(team_performer):
+    """Return the league label for a team, or '' if not a league/college team."""
+    if not isinstance(team_performer, str):
+        return ""
+    # Exact match against the major league teams list
+    if team_performer in TEAM_LEAGUE:
+        return TEAM_LEAGUE[team_performer]
+    # College detection via keywords
+    low = team_performer.lower()
+    if any(kw in low for kw in COLLEGE_KEYWORDS):
+        return "College"
+    return ""
+
+
+def detect_season_ticket_keys(df_raw, min_event_dates=3):
+    """
+    Identify season-ticket combinations in raw source data.
+    A combination of (PO Created, Team/Performer, Sec, Row, Seats, Total Cost, Email)
+    that spans at least `min_event_dates` DISTINCT Event Dates is a season-ticket group.
+    Returns a set of those key tuples.
+    """
+    needed = ["PO Created", "Team/Performer", "Sec", "Row", "Seats",
+              "Total Cost", "PO Email Account", "Event Date"]
+    if any(c not in df_raw.columns for c in needed):
+        return set()
+
+    d = df_raw.copy()
+    # Normalize PO Created to a date for the key
+    d["_po_key"] = fix_date(d["PO Created"]).dt.normalize().dt.date
+    # Normalize Event Date to a date for distinct-count
+    d["_ev_key"] = fix_date(d["Event Date"]).dt.normalize().dt.date
+
+    key_cols = ["_po_key", "Team/Performer", "Sec", "Row", "Seats",
+                "Total Cost", "PO Email Account"]
+    # Build a string key, count distinct event dates per key
+    grp = d.groupby(key_cols, dropna=False)["_ev_key"].nunique()
+    season_keys = set(grp[grp >= min_event_dates].index)
+    return season_keys
+
+
+def season_league_map(df_raw, min_event_dates=3):
+    """
+    Returns a dict mapping (PO Created date, Team/Performer) -> league label
+    for season-ticket groups whose team has a league (major league or college).
+    """
+    season_keys = detect_season_ticket_keys(df_raw, min_event_dates)
+    result = {}
+    for key in season_keys:
+        po_key = key[0]
+        team = key[1]
+        league = league_for_team(team)
+        if league:
+            result[(po_key, team)] = league
+    return result
+
+
 def build_all_query(df_raw):
     df = df_raw.copy()
     df["PO Created"] = fix_date(df["PO Created"]).dt.normalize().dt.date
+
+    # ── Season-ticket detection (uses raw Event Date/Sec/Row/Seats before they're dropped) ──
+    sl_map = season_league_map(df_raw, min_event_dates=3)
+    # Tag each row with its season league (by PO Created + Team/Performer), before T/P is modified
+    df["_SeasonLeague"] = df.apply(
+        lambda r: sl_map.get((r["PO Created"], r["Team/Performer"]), ""), axis=1)
 
     df["Ext PO #"] = df["Ext PO #"].fillna(" ").astype(str)
     df["PO Email Account"] = df["PO Email Account"].fillna(" ").astype(str)
@@ -541,7 +778,7 @@ def build_all_query(df_raw):
     df["Account"] = "Inventory Asset"
     df["Memo"] = df["Team/Performer"]
     df = df[["Company", "PO Created", "Account", "Vendor", "Team/Performer",
-              "Memo", "Total Cost", "Notes", "Notes (Short)", "Delivery Type", "Venue", "Tags"]]
+              "Memo", "Total Cost", "Notes", "Notes (Short)", "Delivery Type", "Venue", "Tags", "_SeasonLeague"]]
 
     # Broadway Groups → Broadway Seasons (before all other vendor logic)
     df["Vendor"] = df["Vendor"].replace("Broadway Groups", "Broadway Seasons")
@@ -618,7 +855,7 @@ def build_all_query(df_raw):
 
     # First groupby
     group_keys = ["Company", "PO Created", "Account", "Vendor", "Team/Performer",
-                  "Memo", "Notes", "Notes (Short)"]
+                  "Memo", "Notes", "Notes (Short)", "_SeasonLeague"]
     df = df.groupby(group_keys, as_index=False, dropna=False)["Total Cost"].sum()
     df = df[df["Total Cost"] > 0]
     df["Vendor"] = df["Vendor"].astype(str)
@@ -632,7 +869,7 @@ def build_all_query(df_raw):
     df = df.rename(columns={"VendorNew": "Vendor"})
 
     # Notes (Final) becomes Team/Performer (per M code)
-    df = df[["Company", "PO Created", "Account", "Vendor", "Notes (Final)", "Total Cost"]]
+    df = df[["Company", "PO Created", "Account", "Vendor", "Notes (Final)", "Total Cost", "_SeasonLeague"]]
     df = df.rename(columns={"Notes (Final)": "Team/Performer"})
 
     # Seasons tagging
@@ -642,6 +879,10 @@ def build_all_query(df_raw):
         lambda v: "Broadway Extras" if v == "Broadway Extras" else ("Broadway" if "Broadway" in str(v) else ""))
     df["Seasons"] = df["Seasons"] + df["Broadway_tag"]
     df = df.drop(columns=["Broadway_tag"])
+
+    # Apply season-ticket League label to rows not already tagged
+    df["Seasons"] = df.apply(
+        lambda r: r["_SeasonLeague"] if (r["Seasons"] == "" and r["_SeasonLeague"]) else r["Seasons"], axis=1)
 
     # Collapse LN seasons rows
     df["Team/Performer"] = df.apply(
