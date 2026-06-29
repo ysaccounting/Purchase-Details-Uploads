@@ -714,23 +714,32 @@ def league_for_team(team_performer):
 def detect_season_ticket_keys(df_raw, min_event_dates=3):
     """
     Identify season-ticket combinations in raw source data.
-    A combination of (PO Created, Team/Performer, Sec, Row, Seats, Total Cost, Email)
+    A combination of (Company, Team/Performer, Sec, Row, Seats, Email)
     that spans at least `min_event_dates` DISTINCT Event Dates is a season-ticket group.
+    PO Created date and Total Cost are NOT part of the key, so groups can span
+    multiple upload days and varying per-game prices.
+    Rows with excluded vendors (resale marketplaces) are never counted.
     Returns a set of those key tuples.
     """
-    needed = ["PO Created", "Team/Performer", "Sec", "Row", "Seats",
-              "Total Cost", "PO Email Account", "Event Date"]
+    needed = ["Company", "Team/Performer", "Sec", "Row", "Seats",
+              "PO Email Account", "Event Date"]
     if any(c not in df_raw.columns for c in needed):
         return set()
 
     d = df_raw.copy()
-    # Normalize PO Created to a date for the key
-    d["_po_key"] = fix_date(d["PO Created"]).dt.normalize().dt.date
+
+    # Exclude resale-marketplace vendors from season-ticket detection
+    if "Vendor" in d.columns:
+        excluded_vendors = ["ticketmaster", "tickpick", "stubhub",
+                            "ticket evolution", "gotickets"]
+        v_low = d["Vendor"].astype(str).str.strip().str.lower()
+        d = d[~v_low.isin(excluded_vendors)]
+
     # Normalize Event Date to a date for distinct-count
     d["_ev_key"] = fix_date(d["Event Date"]).dt.normalize().dt.date
 
-    key_cols = ["_po_key", "Team/Performer", "Sec", "Row", "Seats",
-                "Total Cost", "PO Email Account"]
+    key_cols = ["Company", "Team/Performer", "Sec", "Row", "Seats",
+                "PO Email Account"]
     # Build a string key, count distinct event dates per key
     grp = d.groupby(key_cols, dropna=False)["_ev_key"].nunique()
     season_keys = set(grp[grp >= min_event_dates].index)
@@ -739,17 +748,17 @@ def detect_season_ticket_keys(df_raw, min_event_dates=3):
 
 def season_league_map(df_raw, min_event_dates=3):
     """
-    Returns a dict mapping (PO Created date, Team/Performer) -> league label
+    Returns a dict mapping (Company, Team/Performer) -> league label
     for season-ticket groups whose team has a league (major league or college).
     """
     season_keys = detect_season_ticket_keys(df_raw, min_event_dates)
     result = {}
     for key in season_keys:
-        po_key = key[0]
+        company = key[0]
         team = key[1]
         league = league_for_team(team)
         if league:
-            result[(po_key, team)] = league
+            result[(company, team)] = league
     return result
 
 
@@ -759,9 +768,15 @@ def build_all_query(df_raw):
 
     # ── Season-ticket detection (uses raw Event Date/Sec/Row/Seats before they're dropped) ──
     sl_map = season_league_map(df_raw, min_event_dates=3)
-    # Tag each row with its season league (by PO Created + Team/Performer), before T/P is modified
-    df["_SeasonLeague"] = df.apply(
-        lambda r: sl_map.get((r["PO Created"], r["Team/Performer"]), ""), axis=1)
+    # Tag each row with its season league (by Company + Team/Performer), before T/P is modified.
+    # A row only gets the tag if its own vendor is NOT an excluded resale marketplace —
+    # this prevents Ticketmaster/GoTickets/etc. rows from inheriting a label via a shared team+email.
+    _excluded_vendors = {"ticketmaster", "tickpick", "stubhub", "ticket evolution", "gotickets"}
+    def _season_tag(r):
+        if str(r["Vendor"]).strip().lower() in _excluded_vendors:
+            return ""
+        return sl_map.get((r["Company"], r["Team/Performer"]), "")
+    df["_SeasonLeague"] = df.apply(_season_tag, axis=1)
 
     df["Ext PO #"] = df["Ext PO #"].fillna(" ").astype(str)
     df["PO Email Account"] = df["PO Email Account"].fillna(" ").astype(str)
@@ -880,9 +895,19 @@ def build_all_query(df_raw):
     df["Seasons"] = df["Seasons"] + df["Broadway_tag"]
     df = df.drop(columns=["Broadway_tag"])
 
-    # Apply season-ticket League label to rows not already tagged
-    df["Seasons"] = df.apply(
-        lambda r: r["_SeasonLeague"] if (r["Seasons"] == "" and r["_SeasonLeague"]) else r["Seasons"], axis=1)
+    # Apply season-ticket League label to rows not already tagged.
+    # Skip rows whose FINAL vendor is an excluded resale marketplace — a raw vendor
+    # like "Live Nation" can be renamed to "Ticketmaster", so the check must use the
+    # final vendor name here, not the raw one captured earlier.
+    _excluded_final_vendors = {"ticketmaster", "tickpick", "stubhub",
+                               "ticket evolution", "gotickets"}
+    def _apply_season(r):
+        if r["Seasons"] == "" and r["_SeasonLeague"]:
+            if str(r["Vendor"]).strip().lower() in _excluded_final_vendors:
+                return ""
+            return r["_SeasonLeague"]
+        return r["Seasons"]
+    df["Seasons"] = df.apply(_apply_season, axis=1)
 
     # Collapse LN seasons rows
     df["Team/Performer"] = df.apply(
