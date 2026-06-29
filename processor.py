@@ -456,7 +456,6 @@ COMPANY_SHEETS = {
     "Katz":        ["YS Katz"],
     "TL":          ["YS TL"],
     "Waxler":      ["YSW"],
-    "Damona":      ["Damon and Crew"],
 }
 
 
@@ -1036,7 +1035,6 @@ def process_files(file_list):
         "Katz":       filter_company(all_df, ["YS Katz"]),
         "TL":         filter_company(all_df, ["YS TL"]),
         "Waxler":     filter_company(all_df, ["YSW"], rename_company={"YSW": "YSW (Waxler)"}),
-        "Damona":       filter_company(all_df, ["Damon and Crew"]),
         "YourTickets":  filter_company(all_df, ["YourTickets"]),
     }
 
@@ -1102,7 +1100,6 @@ def build_filtered_outputs(df_raw, df_cancelled, all_df, summary_df, company_dfs
         "Katz":       ["YS Katz"],
         "TL":         ["YS TL"],
         "Waxler":     ["YSW"],
-        "Damona":     ["Damon and Crew"],
         "YourTickets":["YourTickets"],
     }
 
