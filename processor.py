@@ -714,23 +714,32 @@ def league_for_team(team_performer):
 def detect_season_ticket_keys(df_raw, min_event_dates=3):
     """
     Identify season-ticket combinations in raw source data.
-    A combination of (PO Created, Team/Performer, Sec, Row, Seats, Total Cost, Email)
+    A combination of (Company, Team/Performer, Sec, Row, Seats, Email)
     that spans at least `min_event_dates` DISTINCT Event Dates is a season-ticket group.
+    PO Created date and Total Cost are NOT part of the key, so groups can span
+    multiple upload days and varying per-game prices.
+    Rows with excluded vendors (resale marketplaces) are never counted.
     Returns a set of those key tuples.
     """
-    needed = ["PO Created", "Team/Performer", "Sec", "Row", "Seats",
-              "Total Cost", "PO Email Account", "Event Date"]
+    needed = ["Company", "Team/Performer", "Sec", "Row", "Seats",
+              "PO Email Account", "Event Date"]
     if any(c not in df_raw.columns for c in needed):
         return set()
 
     d = df_raw.copy()
-    # Normalize PO Created to a date for the key
-    d["_po_key"] = fix_date(d["PO Created"]).dt.normalize().dt.date
+
+    # Exclude resale-marketplace vendors from season-ticket detection
+    if "Vendor" in d.columns:
+        excluded_vendors = ["ticketmaster", "tickpick", "stubhub",
+                            "ticket evolution", "gotickets"]
+        v_low = d["Vendor"].astype(str).str.strip().str.lower()
+        d = d[~v_low.isin(excluded_vendors)]
+
     # Normalize Event Date to a date for distinct-count
     d["_ev_key"] = fix_date(d["Event Date"]).dt.normalize().dt.date
 
-    key_cols = ["_po_key", "Team/Performer", "Sec", "Row", "Seats",
-                "Total Cost", "PO Email Account"]
+    key_cols = ["Company", "Team/Performer", "Sec", "Row", "Seats",
+                "PO Email Account"]
     # Build a string key, count distinct event dates per key
     grp = d.groupby(key_cols, dropna=False)["_ev_key"].nunique()
     season_keys = set(grp[grp >= min_event_dates].index)
@@ -739,17 +748,17 @@ def detect_season_ticket_keys(df_raw, min_event_dates=3):
 
 def season_league_map(df_raw, min_event_dates=3):
     """
-    Returns a dict mapping (PO Created date, Team/Performer) -> league label
+    Returns a dict mapping (Company, Team/Performer) -> league label
     for season-ticket groups whose team has a league (major league or college).
     """
     season_keys = detect_season_ticket_keys(df_raw, min_event_dates)
     result = {}
     for key in season_keys:
-        po_key = key[0]
+        company = key[0]
         team = key[1]
         league = league_for_team(team)
         if league:
-            result[(po_key, team)] = league
+            result[(company, team)] = league
     return result
 
 
@@ -759,9 +768,9 @@ def build_all_query(df_raw):
 
     # ── Season-ticket detection (uses raw Event Date/Sec/Row/Seats before they're dropped) ──
     sl_map = season_league_map(df_raw, min_event_dates=3)
-    # Tag each row with its season league (by PO Created + Team/Performer), before T/P is modified
+    # Tag each row with its season league (by Company + Team/Performer), before T/P is modified
     df["_SeasonLeague"] = df.apply(
-        lambda r: sl_map.get((r["PO Created"], r["Team/Performer"]), ""), axis=1)
+        lambda r: sl_map.get((r["Company"], r["Team/Performer"]), ""), axis=1)
 
     df["Ext PO #"] = df["Ext PO #"].fillna(" ").astype(str)
     df["PO Email Account"] = df["PO Email Account"].fillna(" ").astype(str)
