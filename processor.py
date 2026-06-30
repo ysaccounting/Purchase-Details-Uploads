@@ -1164,6 +1164,19 @@ def convert_new_format(file_bytes, filename=""):
     # Total Cost = CostPerTicket × Quantity
     df["Total Cost"] = pd.to_numeric(df["CostPerTicket"], errors="coerce").fillna(0) *                        pd.to_numeric(df["Quantity"], errors="coerce").fillna(0)
 
+    # Compute combined cancellation (IsPOCancelled OR IsCancelled) before renaming,
+    # matching Zone 2's logic so converted files carry the right Cancelled flag.
+    def _truthy_conv(series):
+        return series.astype(str).str.strip().str.lower().isin(["yes", "true", "1", "y"])
+    conv_cancel = None
+    if "IsPOCancelled" in df.columns:
+        conv_cancel = _truthy_conv(df["IsPOCancelled"])
+    if "IsCancelled" in df.columns:
+        icc = _truthy_conv(df["IsCancelled"])
+        conv_cancel = icc if conv_cancel is None else (conv_cancel | icc)
+    if conv_cancel is not None:
+        df["_CancelledCombined"] = conv_cancel.map({True: "Yes", False: "No"})
+
     # Map columns to old format order
     col_map = {
         "CompanyName":      "Company",
@@ -1187,6 +1200,11 @@ def convert_new_format(file_bytes, filename=""):
     }
 
     df = df.rename(columns=col_map)
+
+    # Override Cancelled with the combined flag (covers IsCancelled-only cancellations)
+    if "_CancelledCombined" in df.columns:
+        df["Cancelled"] = df["_CancelledCombined"]
+        df = df.drop(columns=["_CancelledCombined"])
 
     # Final column order (old format minus Delivery Type, Tags; includes Seats and Total Cost)
     final_cols = [
