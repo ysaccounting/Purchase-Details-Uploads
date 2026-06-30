@@ -775,13 +775,17 @@ def build_all_query(df_raw):
     # seat group is labeled — not every row for that team.
     # A row only gets the tag if its own vendor is NOT an excluded resale marketplace.
     _excluded_vendors = {"ticketmaster", "tickpick", "stubhub", "ticket evolution", "gotickets"}
-    def _season_tag(r):
-        if str(r["Vendor"]).strip().lower() in _excluded_vendors:
-            return ""
-        key = (r["Company"], r["Team/Performer"], r["Sec"], r["Row"],
-               r["Seats"], r["PO Email Account"])
-        return sl_map.get(key, "")
-    df["_SeasonLeague"] = df.apply(_season_tag, axis=1)
+    _season_key_cols = ["Company", "Team/Performer", "Sec", "Row", "Seats", "PO Email Account"]
+    if sl_map and all(c in df.columns for c in _season_key_cols):
+        def _season_tag(r):
+            if str(r["Vendor"]).strip().lower() in _excluded_vendors:
+                return ""
+            key = (r["Company"], r["Team/Performer"], r["Sec"], r["Row"],
+                   r["Seats"], r["PO Email Account"])
+            return sl_map.get(key, "")
+        df["_SeasonLeague"] = df.apply(_season_tag, axis=1)
+    else:
+        df["_SeasonLeague"] = ""
 
     df["Ext PO #"] = df["Ext PO #"].fillna(" ").astype(str)
     df["PO Email Account"] = df["PO Email Account"].fillna(" ").astype(str)
@@ -1035,9 +1039,19 @@ def _normalize_new_format(df):
     qty = pd.to_numeric(df.get("Qty"), errors="coerce").fillna(0.0)
     df["Total Cost"] = cost * qty
 
-    # Cancellation is driven by IsPOCancelled in the new format.
+    # Cancellation is driven by IsPOCancelled OR IsCancelled in the new format.
+    # Some rows have IsCancelled=true while IsPOCancelled=false — both must exclude the row.
+    def _truthy(series):
+        return series.astype(str).str.strip().str.lower().isin(["yes", "true", "1", "y"])
+
+    cancel_flag = None
     if "IsPOCancelled" in df.columns:
-        df["Cancelled"] = df["IsPOCancelled"]
+        cancel_flag = _truthy(df["IsPOCancelled"])
+    if "IsCancelled" in df.columns:
+        ic = _truthy(df["IsCancelled"])
+        cancel_flag = ic if cancel_flag is None else (cancel_flag | ic)
+    if cancel_flag is not None:
+        df["Cancelled"] = cancel_flag.map({True: "Yes", False: "No"})
 
     return df
 
