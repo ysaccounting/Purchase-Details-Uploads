@@ -748,17 +748,19 @@ def detect_season_ticket_keys(df_raw, min_event_dates=3):
 
 def season_league_map(df_raw, min_event_dates=3):
     """
-    Returns a dict mapping (Company, Team/Performer) -> league label
-    for season-ticket groups whose team has a league (major league or college).
+    Returns a dict mapping the FULL season-ticket key
+    (Company, Team/Performer, Sec, Row, Seats, Email) -> league label,
+    for groups whose team has a league (major league or college).
+    Only the specific seat group that meets the >=3 event-date threshold is labeled —
+    other seat groups for the same team are NOT labeled (strict matching).
     """
     season_keys = detect_season_ticket_keys(df_raw, min_event_dates)
     result = {}
     for key in season_keys:
-        company = key[0]
-        team = key[1]
+        team = key[1]  # key = (Company, Team/Performer, Sec, Row, Seats, Email)
         league = league_for_team(team)
         if league:
-            result[(company, team)] = league
+            result[key] = league
     return result
 
 
@@ -768,14 +770,17 @@ def build_all_query(df_raw):
 
     # ── Season-ticket detection (uses raw Event Date/Sec/Row/Seats before they're dropped) ──
     sl_map = season_league_map(df_raw, min_event_dates=3)
-    # Tag each row with its season league (by Company + Team/Performer), before T/P is modified.
-    # A row only gets the tag if its own vendor is NOT an excluded resale marketplace —
-    # this prevents Ticketmaster/GoTickets/etc. rows from inheriting a label via a shared team+email.
+    # Tag each row with its season league using the FULL key
+    # (Company, Team/Performer, Sec, Row, Seats, Email) so only the specific qualifying
+    # seat group is labeled — not every row for that team.
+    # A row only gets the tag if its own vendor is NOT an excluded resale marketplace.
     _excluded_vendors = {"ticketmaster", "tickpick", "stubhub", "ticket evolution", "gotickets"}
     def _season_tag(r):
         if str(r["Vendor"]).strip().lower() in _excluded_vendors:
             return ""
-        return sl_map.get((r["Company"], r["Team/Performer"]), "")
+        key = (r["Company"], r["Team/Performer"], r["Sec"], r["Row"],
+               r["Seats"], r["PO Email Account"])
+        return sl_map.get(key, "")
     df["_SeasonLeague"] = df.apply(_season_tag, axis=1)
 
     df["Ext PO #"] = df["Ext PO #"].fillna(" ").astype(str)
