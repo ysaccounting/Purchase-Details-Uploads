@@ -35,13 +35,13 @@ def ordinal(n):
     return f"{n}{suffix}"
 
 def format_date_range(dates):
-    """Return a human-readable date range string like 'May 1st thru May 3rd 2026'."""
+    """Return a date range string in M-D format like '6-1 thru 6-16' (or '6-1' for a single day)."""
     sorted_dates = sorted(dates)
     def fmt(d):
-        return f"{d.strftime('%B')} {ordinal(d.day)}"
+        return f"{d.month}-{d.day}"
     if len(sorted_dates) == 1:
-        return f"{fmt(sorted_dates[0])} {sorted_dates[0].strftime('%Y')}"
-    return f"{fmt(sorted_dates[0])} thru {fmt(sorted_dates[-1])} {sorted_dates[-1].strftime('%Y')}"
+        return fmt(sorted_dates[0])
+    return f"{fmt(sorted_dates[0])} thru {fmt(sorted_dates[-1])}"
 
 
 VENDOR_REPLACEMENTS = [
