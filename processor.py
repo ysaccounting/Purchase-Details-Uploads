@@ -820,9 +820,9 @@ def build_all_query(df_raw):
         return row["Venue"]
     df["Vendor"] = df.apply(resolve_tm_am, axis=1)
 
-    # Concert Extras at MSG / Radio City / Beacon → Madison Square Garden (before Live Nation Extras rename)
+    # Concert Extras at MSG / Beacon → Madison Square Garden (before Live Nation Extras rename)
     ce_msg_venues = ["Madison Square Garden", "Madison Square Garden Parking Lots",
-                     "Radio City Music Hall", "Beacon Theatre - New York"]
+                     "Beacon Theatre - New York"]
     ce_mask = (df["Vendor"] == "Concert Extras") & (df["Venue"].isin(ce_msg_venues))
     df.loc[ce_mask, "Vendor"] = "Madison Square Garden"
 
@@ -835,8 +835,10 @@ def build_all_query(df_raw):
     df["Company"] = df["Company"].astype(str)
     df["Team/Performer"] = df["Team/Performer"].str.replace("Miami HEAT", "Miami Heat", regex=False)
 
-    # Sports Extras → venue
-    df["Vendor"] = np.where(df["Vendor"] == "Sports Extras", df["Venue"], df["Vendor"])
+    # Sports Extras → venue (but Radio City Music Hall → Madison Square Garden)
+    sports_mask = df["Vendor"] == "Sports Extras"
+    df.loc[sports_mask, "Vendor"] = df.loc[sports_mask].apply(
+        lambda r: "Madison Square Garden" if r["Venue"] == "Radio City Music Hall" else r["Venue"], axis=1)
 
     # Ticket Guy broadway box office
     def ticket_guy_vendor(row):
@@ -955,11 +957,15 @@ def build_summary_query(df_raw):
         return row["Venue"]
     s["Vendor"] = s.apply(resolve_tm_am_s, axis=1)
 
-    # Concert Extras at MSG / Radio City / Beacon → Madison Square Garden (before Live Nation Extras rename)
+    # Concert Extras at MSG / Beacon → Madison Square Garden (before Live Nation Extras rename)
     ce_msg_venues_s = ["Madison Square Garden", "Madison Square Garden Parking Lots",
-                       "Radio City Music Hall", "Beacon Theatre - New York"]
+                       "Beacon Theatre - New York"]
     ce_mask_s = (s["Vendor"] == "Concert Extras") & (s["Venue"].isin(ce_msg_venues_s))
     s.loc[ce_mask_s, "Vendor"] = "Madison Square Garden"
+
+    # Sports Extras at Radio City Music Hall → Madison Square Garden
+    sports_mask_s = (s["Vendor"] == "Sports Extras") & (s["Venue"] == "Radio City Music Hall")
+    s.loc[sports_mask_s, "Vendor"] = "Madison Square Garden"
 
     s = apply_vendor_replacements(s)
     s["Vendor"] = s["Vendor"].str.replace("FrontGate Tickets", "Front Gate Tickets", regex=False)
