@@ -804,6 +804,10 @@ def build_all_query(df_raw):
     df = df[["Company", "PO Created", "Account", "Vendor", "Team/Performer",
               "Memo", "Total Cost", "Notes", "Notes (Short)", "Delivery Type", "Venue", "Tags", "_SeasonLeague"]]
 
+    # Flag rows whose ORIGINAL vendor was "Broadway Groups" so they can be tagged
+    # "Broadway Groups" in Seasons later (the vendor gets renamed twice below).
+    df["_BwayGroups"] = (df["Vendor"] == "Broadway Groups")
+
     # Broadway Groups → Broadway Seasons (before all other vendor logic)
     df["Vendor"] = df["Vendor"].replace("Broadway Groups", "Broadway Seasons")
 
@@ -881,7 +885,7 @@ def build_all_query(df_raw):
 
     # First groupby
     group_keys = ["Company", "PO Created", "Account", "Vendor", "Team/Performer",
-                  "Memo", "Notes", "Notes (Short)", "_SeasonLeague"]
+                  "Memo", "Notes", "Notes (Short)", "_SeasonLeague", "_BwayGroups"]
     df = df.groupby(group_keys, as_index=False, dropna=False)["Total Cost"].sum()
     df = df[df["Total Cost"] > 0]
     df["Vendor"] = df["Vendor"].astype(str)
@@ -895,14 +899,24 @@ def build_all_query(df_raw):
     df = df.rename(columns={"VendorNew": "Vendor"})
 
     # Notes (Final) becomes Team/Performer (per M code)
-    df = df[["Company", "PO Created", "Account", "Vendor", "Notes (Final)", "Total Cost", "_SeasonLeague"]]
+    df = df[["Company", "PO Created", "Account", "Vendor", "Notes (Final)", "Total Cost", "_SeasonLeague", "_BwayGroups"]]
     df = df.rename(columns={"Notes (Final)": "Team/Performer"})
 
     # Seasons tagging
     df["Seasons"] = df["Vendor"].apply(
         lambda v: "LN Extras" if v == "Live Nation Extras" else ("Live Nation" if "Live Nation" in str(v) else ""))
-    df["Broadway_tag"] = df["Vendor"].apply(
-        lambda v: "Broadway Extras" if v == "Broadway Extras" else ("Broadway" if "Broadway" in str(v) else ""))
+    # Broadway tag: rows whose ORIGINAL vendor was "Broadway Groups" get "Broadway Groups";
+    # literal "Broadway Extras" vendors get "Broadway Extras"; any other Broadway vendor gets "Broadway".
+    def _bway_tag(r):
+        v = str(r["Vendor"])
+        if r.get("_BwayGroups", False):
+            return "Broadway Groups"
+        if v == "Broadway Extras":
+            return "Broadway Extras"
+        if "Broadway" in v:
+            return "Broadway"
+        return ""
+    df["Broadway_tag"] = df.apply(_bway_tag, axis=1)
     df["Seasons"] = df["Seasons"] + df["Broadway_tag"]
     df = df.drop(columns=["Broadway_tag"])
 
