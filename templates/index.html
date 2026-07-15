@@ -829,6 +829,21 @@
       });
       updateModalCount();
     };
+
+    // Reset & wire the "Combined file only" checkbox
+    const co = document.getElementById("modal-combined-only");
+    co.checked = false;
+    co.onchange = function() {
+      const disabled = this.checked;
+      // Grey out and disable the company list + select-all when combined-only is on
+      document.getElementById("modal-company-list").style.opacity = disabled ? "0.4" : "1";
+      document.getElementById("modal-company-list").style.pointerEvents = disabled ? "none" : "auto";
+      const saRow = document.querySelector(".modal-select-all-row");
+      saRow.style.opacity = disabled ? "0.4" : "1";
+      saRow.style.pointerEvents = disabled ? "none" : "auto";
+      updateModalCount();
+    };
+
     document.getElementById("modal-overlay").classList.add("active");
   }
 
@@ -840,7 +855,9 @@
     const sa = document.getElementById("modal-select-all");
     sa.checked = checked === total;
     sa.indeterminate = checked > 0 && checked < total;
-    document.getElementById("modal-generate-btn").disabled = checked === 0;
+    // Generate is enabled if combined-only is checked OR at least one company is selected
+    const combinedOnly = document.getElementById("modal-combined-only").checked;
+    document.getElementById("modal-generate-btn").disabled = !combinedOnly && checked === 0;
   }
 
   function closeModal() {
@@ -848,6 +865,7 @@
   }
 
   async function generateFiles() {
+    const combinedOnly = document.getElementById("modal-combined-only").checked;
     const selected = [...document.querySelectorAll("#modal-company-list input[type=checkbox]")]
       .filter(cb => cb.checked).map(cb => cb.value);
 
@@ -862,7 +880,7 @@
       const res = await fetch(`/configure/${_jobId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ selected_companies: selected }),
+        body: JSON.stringify({ selected_companies: selected, combined_only: combinedOnly }),
       });
       const result = await res.json();
       if (result.status !== "building") {
@@ -902,7 +920,7 @@
 
         if (result.status === "ready") {
           closeModal();
-          showResults(jobId, { ..._data, available_companies: result.available_companies, selected_companies: result.selected_companies });
+          showResults(jobId, { ..._data, available_companies: result.available_companies, selected_companies: result.selected_companies, combined_only: result.combined_only });
         } else {
           showError("Error generating files: " + (result.message || "Unknown error"));
           closeModal();
@@ -924,8 +942,12 @@
     resultsArea.style.display = "block";
     resetBtn.style.display = "block";
 
+    const combinedOnly = data.combined_only === true;
+
     document.getElementById("date-badge").textContent = data.date_range;
     document.getElementById("btn-zip").href = `/download/${jobId}/all`;
+    // In combined-only mode there's no zip of company files — hide that button
+    document.getElementById("btn-zip").style.display = combinedOnly ? "none" : "";
 
     const statsBody = document.getElementById("stats-body");
     statsBody.innerHTML = "";
@@ -939,12 +961,15 @@
       tr.innerHTML = `<td>Combined</td><td>${stats["Combined"].rows.toLocaleString()}</td><td>$${stats["Combined"].total_cost.toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2})}</td>`;
       statsBody.appendChild(tr);
     }
-    allCompanies.forEach(company => {
-      const s = stats[company] || {rows: 0, total_cost: 0};
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${company}</td><td>${s.rows.toLocaleString()}</td><td>$${s.total_cost.toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2})}</td>`;
-      statsBody.appendChild(tr);
-    });
+    // In combined-only mode, only show the Combined summary row
+    if (!combinedOnly) {
+      allCompanies.forEach(company => {
+        const s = stats[company] || {rows: 0, total_cost: 0};
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${company}</td><td>${s.rows.toLocaleString()}</td><td>$${s.total_cost.toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2})}</td>`;
+        statsBody.appendChild(tr);
+      });
+    }
 
     const grid = document.getElementById("company-grid");
     grid.innerHTML = "";
@@ -963,29 +988,32 @@
       <span class="btn-label"><strong>Combined</strong></span>`;
     grid.appendChild(combinedBtn);
 
-    const companiesWithData = new Set(availableCompanies);
-    allCompanies.forEach(company => {
-      const hasData = companiesWithData.has(company);
-      const el = document.createElement(hasData ? "a" : "div");
-      el.className = "download-btn";
-      if (hasData) {
-        el.href = `/download/${jobId}/company/${encodeURIComponent(company)}`;
-        el.download = "";
-      } else {
-        el.style.opacity = "0.4";
-        el.style.cursor = "default";
-        el.style.pointerEvents = "none";
-      }
-      el.innerHTML = `
-        <span class="icon icon-company">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0119 9.414V19a2 2 0 01-2 2z"/>
-          </svg>
-        </span>
-        <span class="btn-label"><strong>${company}</strong>${!hasData ? '<small>No data</small>' : ''}</span>`;
-      grid.appendChild(el);
-    });
+    // In combined-only mode, don't render the per-company download buttons
+    if (!combinedOnly) {
+      const companiesWithData = new Set(availableCompanies);
+      allCompanies.forEach(company => {
+        const hasData = companiesWithData.has(company);
+        const el = document.createElement(hasData ? "a" : "div");
+        el.className = "download-btn";
+        if (hasData) {
+          el.href = `/download/${jobId}/company/${encodeURIComponent(company)}`;
+          el.download = "";
+        } else {
+          el.style.opacity = "0.4";
+          el.style.cursor = "default";
+          el.style.pointerEvents = "none";
+        }
+        el.innerHTML = `
+          <span class="icon icon-company">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0119 9.414V19a2 2 0 01-2 2z"/>
+            </svg>
+          </span>
+          <span class="btn-label"><strong>${company}</strong>${!hasData ? '<small>No data</small>' : ''}</span>`;
+        grid.appendChild(el);
+      });
+    }
   }
 
   // ── Zone 1: New Format Converter ─────────────────────────────────────────
@@ -1134,6 +1162,10 @@
       <span id="modal-sel-count"></span>
     </div>
     <p class="modal-sub">Choose which companies to include in the output files.</p>
+    <label id="combined-only-row" style="display:flex; align-items:center; gap:10px; padding:11px 14px; background:#eef2ff; border:1px solid #c5cae9; border-radius:10px; margin-bottom:14px; cursor:pointer;">
+      <input type="checkbox" id="modal-combined-only" style="width:16px; height:16px; cursor:pointer; flex-shrink:0;" />
+      <span style="font-size:13px; color:#1a1a2e;"><strong>Combined file only</strong> — include all companies, skip individual files (fastest)</span>
+    </label>
     <div class="modal-list-wrap">
       <div class="modal-select-all-row">
         <input type="checkbox" id="modal-select-all" checked />

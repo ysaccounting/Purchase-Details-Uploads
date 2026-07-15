@@ -111,7 +111,7 @@ def status(job_id):
     })
 
 
-def run_configure(job_id, selected_companies):
+def run_configure(job_id, selected_companies, combined_only=False):
     """Background worker that builds filtered output files."""
     try:
         d = job_dir(job_id)
@@ -128,7 +128,7 @@ def run_configure(job_id, selected_companies):
         combined_bytes, company_files = build_filtered_outputs(
             dfs["df_raw"], dfs["df_cancelled"], dfs["all_df"],
             dfs["summary_df"], dfs["company_dfs"], selected_companies,
-            progress_cb=progress_cb
+            progress_cb=progress_cb, combined_only=combined_only
         )
 
         # Write combined
@@ -148,6 +148,7 @@ def run_configure(job_id, selected_companies):
         # Update meta with selection
         meta["selected_companies"] = selected_companies
         meta["available_companies"] = list(company_files.keys())
+        meta["combined_only"] = combined_only
         with open(os.path.join(d, "meta.json"), "w") as f:
             json.dump(meta, f)
 
@@ -168,7 +169,12 @@ def configure(job_id):
         return jsonify({"error": "Job not found"}), 404
 
     data = request.get_json()
-    selected_companies = data.get("selected_companies", meta["all_companies"])
+    combined_only = bool(data.get("combined_only", False))
+    # When combined_only, always include all companies in the combined file
+    if combined_only:
+        selected_companies = meta["all_companies"]
+    else:
+        selected_companies = data.get("selected_companies", meta["all_companies"])
 
     pkl_path = os.path.join(job_dir(job_id), "dataframes.pkl")
     if not os.path.exists(pkl_path):
@@ -178,7 +184,7 @@ def configure(job_id):
     d = job_dir(job_id)
     with open(os.path.join(d, "configure_status.json"), "w") as f:
         json.dump({"status": "building"}, f)
-    threading.Thread(target=run_configure, args=(job_id, selected_companies), daemon=True).start()
+    threading.Thread(target=run_configure, args=(job_id, selected_companies, combined_only), daemon=True).start()
 
     return jsonify({"status": "building"})
 
@@ -198,6 +204,7 @@ def configure_status(job_id):
             "date_range":          meta["date_range"],
             "available_companies": meta.get("available_companies", []),
             "selected_companies":  meta.get("selected_companies", []),
+            "combined_only":       meta.get("combined_only", False),
         })
     return jsonify(status)
 

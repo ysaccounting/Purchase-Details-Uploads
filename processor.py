@@ -635,7 +635,7 @@ COMPANY_SHEETS = {
 # Excel styling
 # ---------------------------------------------------------------------------
 
-def write_sheet(wb, name, dataframe):
+def write_sheet(wb, name, dataframe, styled=True):
     ws = wb.create_sheet(name)
     cols = list(dataframe.columns)
     thin = Side(style="thin", color="CCCCCC")
@@ -651,32 +651,69 @@ def write_sheet(wb, name, dataframe):
         cell.alignment = header_align
         cell.border = border
 
+    po_idx = cols.index("PO Created") if "PO Created" in cols else -1
+    tc_idx = cols.index("Total Cost") if "Total Cost" in cols else -1
+
+    # ── Fast path for large sheets (e.g. Source Data): write values only, no per-cell
+    #    styling. Styling millions of cells in openpyxl is prohibitively slow, so big
+    #    raw-data tabs get a clean header + filter/freeze but plain body cells. ──
+    if not styled:
+        for ri, row in enumerate(dataframe.itertuples(index=False), 2):
+            for ci, val in enumerate(row, 1):
+                idx = ci - 1
+                if idx == po_idx and val is not None and not (isinstance(val, float) and np.isnan(val)):
+                    try:
+                        val = pd.Timestamp(val).strftime("%m/%d/%Y")
+                    except Exception:
+                        pass
+                cell = ws.cell(row=ri, column=ci, value=val)
+                if idx == tc_idx:
+                    cell.number_format = "0.00"
+        # Set reasonable column widths from the header + a sample of rows
+        sample = dataframe.head(200)
+        for ci, col in enumerate(cols, 1):
+            max_len = len(str(col))
+            series = sample.iloc[:, ci - 1]
+            for val in series:
+                vlen = len(str(val)) if val is not None else 0
+                if vlen > max_len:
+                    max_len = vlen
+            ws.column_dimensions[get_column_letter(ci)].width = min(max_len + 2, 55)
+        ws.freeze_panes = "A2"
+        ws.auto_filter.ref = ws.dimensions
+        return
+
     fill_odd  = PatternFill("solid", start_color="FFFFFF")
     fill_even = PatternFill("solid", start_color="EEF2FF")
+    # Shared style objects — reused across all body cells (avoids millions of allocations)
+    body_font = Font(name="Arial", size=10)
+    body_align = Alignment(vertical="center")
+
+    # Track max width per column while writing (single pass instead of a second full scan)
+    max_widths = [len(str(c)) for c in cols]
 
     for ri, row in enumerate(dataframe.itertuples(index=False), 2):
         row_fill = fill_even if ri % 2 == 0 else fill_odd
         for ci, val in enumerate(row, 1):
-            col_name = cols[ci - 1]
-            if col_name == "PO Created" and val is not None and not (isinstance(val, float) and np.isnan(val)):
+            idx = ci - 1
+            if idx == po_idx and val is not None and not (isinstance(val, float) and np.isnan(val)):
                 try:
                     val = pd.Timestamp(val).strftime("%m/%d/%Y")
                 except Exception:
                     pass
             cell = ws.cell(row=ri, column=ci, value=val)
-            cell.font = Font(name="Arial", size=10)
-            cell.alignment = Alignment(vertical="center")
+            cell.font = body_font
+            cell.alignment = body_align
             cell.border = border
             cell.fill = row_fill
-            if col_name == "Total Cost":
+            if idx == tc_idx:
                 cell.number_format = "0.00"
+            vlen = len(str(val)) if val is not None else 0
+            if vlen > max_widths[idx]:
+                max_widths[idx] = vlen
 
     for ci, col in enumerate(cols, 1):
-        max_len = len(str(col))
-        for row in dataframe.itertuples(index=False):
-            val = row[ci - 1]
-            max_len = max(max_len, len(str(val)) if val is not None else 0)
-        ws.column_dimensions[get_column_letter(ci)].width = min(max_len + 2, 55)
+        ws.column_dimensions[get_column_letter(ci)].width = min(max_widths[ci - 1] + 2, 55)
 
     ws.freeze_panes = "A2"
     ws.auto_filter.ref = ws.dimensions
@@ -1389,14 +1426,16 @@ def process_files(file_list):
     }
 
 
-def build_filtered_outputs(df_raw, df_cancelled, all_df, summary_df, company_dfs, selected_companies, progress_cb=None):
+def build_filtered_outputs(df_raw, df_cancelled, all_df, summary_df, company_dfs, selected_companies, progress_cb=None, combined_only=False):
     """Build combined workbook and per-company files for the selected companies only.
-    progress_cb(done, total) is called as work completes."""
+    progress_cb(done, total) is called as work completes.
+    If combined_only=True, only the combined workbook is built (no per-company files)."""
     selected_set = set(selected_companies)
 
     # Total steps = 1 (combined workbook) + number of non-empty selected companies
+    # (unless combined_only, in which case it's just the 1 combined step)
     selected_nonempty = [n for n, cdf in company_dfs.items() if n in selected_set and len(cdf) > 0]
-    total_steps = 1 + len(selected_nonempty)
+    total_steps = 1 if combined_only else (1 + len(selected_nonempty))
     done_steps = 0
     def _tick():
         nonlocal done_steps
@@ -1444,7 +1483,7 @@ def build_filtered_outputs(df_raw, df_cancelled, all_df, summary_df, company_dfs
     # ── Build combined workbook ────────────────────────────────────────────────
     wb_combined = openpyxl.Workbook()
     wb_combined.remove(wb_combined.active)
-    write_sheet(wb_combined, "Source Data", df_raw)
+    write_sheet(wb_combined, "Source Data", df_raw, styled=False)
     if len(df_cancelled) > 0:
         write_sheet(wb_combined, "Canceled", df_cancelled)
     write_sheet(wb_combined, "All", filtered_all)
@@ -1463,20 +1502,21 @@ def build_filtered_outputs(df_raw, df_cancelled, all_df, summary_df, company_dfs
 
     # ── Build per-company workbooks (non-empty selected only) ──────────────────
     company_files = {}
-    for sheet_name, cdf in company_dfs.items():
-        if sheet_name not in selected_set or len(cdf) == 0:
-            continue
-        wb = openpyxl.Workbook()
-        wb.remove(wb.active)
-        write_sheet(wb, sheet_name, cdf)
-        # Add filtered Input tab as second tab
-        raw_companies = raw_company_map.get(sheet_name, [])
-        company_input = df_raw[df_raw["Company"].isin(raw_companies)] if raw_companies else df_raw.iloc[0:0]
-        if len(company_input) > 0:
-            write_sheet(wb, "Source Data", company_input)
-        buf = io.BytesIO()
-        wb.save(buf)
-        company_files[sheet_name] = buf.getvalue()
-        _tick()  # this company done
+    if not combined_only:
+        for sheet_name, cdf in company_dfs.items():
+            if sheet_name not in selected_set or len(cdf) == 0:
+                continue
+            wb = openpyxl.Workbook()
+            wb.remove(wb.active)
+            write_sheet(wb, sheet_name, cdf)
+            # Add filtered Input tab as second tab
+            raw_companies = raw_company_map.get(sheet_name, [])
+            company_input = df_raw[df_raw["Company"].isin(raw_companies)] if raw_companies else df_raw.iloc[0:0]
+            if len(company_input) > 0:
+                write_sheet(wb, "Source Data", company_input, styled=False)
+            buf = io.BytesIO()
+            wb.save(buf)
+            company_files[sheet_name] = buf.getvalue()
+            _tick()  # this company done
 
     return combined_bytes, company_files
