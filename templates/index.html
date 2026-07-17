@@ -755,12 +755,23 @@
     let jobId;
     try {
       const res = await fetch("/upload", { method: "POST", body: formData });
-      const data = await res.json();
+      let data;
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        // Non-JSON response (e.g. size-limit HTML page or gateway error)
+        if (res.status === 413) {
+          showError("Upload too large. Try uploading fewer files at once.");
+        } else {
+          showError(`Upload failed (server returned status ${res.status}). Please try again.`);
+        }
+        return;
+      }
       if (data.error) { showError(data.error); return; }
       jobId = data.job_id;
       currentJobId = jobId;
     } catch (e) {
-      showError("Upload failed. Please try again."); return;
+      showError("Upload failed — could not reach the server. Please try again."); return;
     }
 
     progressBar.style.width = "40%";

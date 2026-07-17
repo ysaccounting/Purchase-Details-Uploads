@@ -10,7 +10,29 @@ from flask import Flask, request, jsonify, send_file, render_template
 from processor import process_files, build_filtered_outputs, convert_new_format
 
 app = Flask(__name__)
-app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50MB
+app.config["MAX_CONTENT_LENGTH"] = 250 * 1024 * 1024  # 250MB (monthly 30-file batches)
+
+
+# Return JSON (not HTML) for errors so the front-end never chokes on "<!doctype ..."
+@app.errorhandler(413)
+def _too_large(e):
+    return jsonify({"error": "Upload too large. Try fewer files at once or contact support."}), 413
+
+
+@app.errorhandler(500)
+def _server_error(e):
+    return jsonify({"error": "Server error while processing. Please try again."}), 500
+
+
+@app.errorhandler(Exception)
+def _unhandled(e):
+    # Werkzeug HTTP exceptions carry their own status code; pass those through as JSON
+    from werkzeug.exceptions import HTTPException
+    if isinstance(e, HTTPException):
+        return jsonify({"error": e.description}), e.code
+    import traceback
+    traceback.print_exc()
+    return jsonify({"error": "Unexpected server error. Please try again."}), 500
 
 JOBS_DIR = os.path.join(tempfile.gettempdir(), "ticketvault_jobs")
 os.makedirs(JOBS_DIR, exist_ok=True)
