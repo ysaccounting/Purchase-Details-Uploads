@@ -129,6 +129,7 @@ BROADWAY_VENUES = {
 
 CONCERT_SEASONS_MAP = {
     "Ak-Chin Pavilion": "Live Nation Ak-Chin Pavilion",
+    "Truliant Amphitheater": "Live Nation Truliant Amphitheater",
     "Alpine Valley Music Theatre": "Live Nation Alpine Valley",
     "Bank of New Hampshire Pavilion": "Live Nation Bank of New Hampshire",
     "Darling's Waterfront Pavilion": "Live Nation Waterfront",
