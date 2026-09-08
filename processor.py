@@ -865,6 +865,10 @@ def build_all_query(df_raw):
     # Concert Extras always → Live Nation Extras (handled by apply_vendor_replacements below),
     # including at MSG / Radio City / Beacon — no special venue mapping.
 
+    # AXS.com at Crypto.com Arena → Crypto.com Arena (before AXS.com → Veritix replacement)
+    axs_crypto = (df["Vendor"] == "AXS.com") & (df["Venue"] == "Crypto.com Arena")
+    df.loc[axs_crypto, "Vendor"] = "Crypto.com Arena"
+
     df = apply_vendor_replacements(df)
 
     for old, new in [("Toyota Amphitheatre", "Live Nation Toyota Amp"),
@@ -919,6 +923,7 @@ def build_all_query(df_raw):
     df["Vendor"] = df["Vendor"].str.title()
     df["Vendor"] = df["Vendor"].str.replace("Philadelphia 76Ers", "Philadelphia 76ers", regex=False)
     df["Vendor"] = df["Vendor"].str.replace("San Francisco 49Ers", "San Francisco 49ers", regex=False)
+    df["Vendor"] = df["Vendor"].str.replace("Crypto.Com Arena", "Crypto.com Arena", regex=False)
 
     # First groupby
     group_keys = ["Company", "PO Created", "Account", "Vendor", "Team/Performer",
@@ -1016,6 +1021,10 @@ def build_summary_query(df_raw):
                            "Radio City Music Hall", "Beacon Theatre - New York"]
     sports_mask_s = (s["Vendor"] == "Sports Extras") & (s["Venue"].isin(sports_msg_venues_s))
     s.loc[sports_mask_s, "Vendor"] = "Madison Square Garden"
+
+    # AXS.com at Crypto.com Arena → Crypto.com Arena (before AXS.com → Veritix replacement)
+    axs_crypto_s = (s["Vendor"] == "AXS.com") & (s["Venue"] == "Crypto.com Arena")
+    s.loc[axs_crypto_s, "Vendor"] = "Crypto.com Arena"
 
     s = apply_vendor_replacements(s)
     s["Vendor"] = s["Vendor"].str.replace("FrontGate Tickets", "Front Gate Tickets", regex=False)
