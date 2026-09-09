@@ -1400,7 +1400,6 @@ def process_files(file_list):
         "Waxler":     filter_company(all_df, ["YSW"], rename_company={"YSW": "YSW (Waxler)"}),
         "Ticket Guy": filter_company(all_df,
                           ["The Ticket Guy", "The Ticket Guy-Jas", "The Ticket Guy-Legacy", "The Ticket Guy VIP"],
-                          vendor_replace={"Broadway Direct": "Box Office - Broadway Inbound"},
                           rename_company={"The Ticket Guy": "Ticket Guy", "The Ticket Guy-Jas": "Ticket Guy",
                                           "The Ticket Guy-Legacy": "Ticket Guy", "The Ticket Guy VIP": "Ticket Guy"}),
         "YourTickets":  filter_company(all_df, ["YourTickets"]),
