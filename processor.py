@@ -224,7 +224,7 @@ CONCERT_SEASONS_MAP = {
     "Broadview Stage at SPAC": "Live Nation Broadview Stage at SPAC",
     "BECU Live Outdoor Venue": "Live Nation BECU",
     "BankNH Pavilion": "Live Nation Bank of New Hampshire",
-    "Everwise Amphitheater at White River State Park": "Live Nation White River",
+    "Everwise Amphitheater at White River State Park": "Live Nation Everwise Amphitheater at White River State Park",
     "The Cynthia Woods Mitchell Pavilion presented by Huntsman": "Live Nation Cynthia Woods Mitchell Pavilion",
     "Harbor Yard Amphitheater": "Live Nation Harbor Yard Amp",
     "Toyota Pavilion at Concord": "Live Nation Concord Pavilion",
